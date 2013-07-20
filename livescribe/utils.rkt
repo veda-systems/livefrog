@@ -215,3 +215,6 @@
 
 (define (symbols->strings lst)
   (map symbol->string lst))
+
+(define (string0 str)
+  (substring str 0 1))

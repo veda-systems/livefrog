@@ -1,6 +1,11 @@
 #lang racket/base
 
 (require
+ (for-syntax
+  racket/base
+  racket/syntax))
+
+(require
  racket/contract
  racket/list
  racket/string
@@ -57,6 +62,8 @@
 
 (define scribble-suffix ".scrbl")
 
+(define markdown-suffix ".md")
+
 (define scribble-header "#lang scribble/base")
 
 (define entry-marker 'event)
@@ -102,6 +109,8 @@
   (displayln (apply string-append rst)))
 
 (define (dl . rst)
+  ;; FIXME:
+  ;; (string-join rst)?
   (displayln (apply string-append (add-between rst " ")))
   (newline))
 
@@ -118,6 +127,7 @@
 
 ;;; Helpers
 (define (remove-newlines str)
+  ;; FIXME: improve this ugly hack
   (string-replace str
                   "\n"
                   (string-replace str "\n " "")))
@@ -129,6 +139,9 @@
 
 (define (suffix->scrbl path)
   (path-replace-suffix path scribble-suffix))
+
+(define (suffix->md path)
+  (path-replace-suffix path markdown-suffix))
 
 (define (tag-value lst)
   (if (= (length lst) 3)
@@ -144,7 +157,22 @@
   (map-append tag-value
               (collect sxpath-value data tags)))
 
-;;; Bruce-force hacks to replace the &...; symbols in the HTML files
+(define (iso-8601-date date)
+  (string-replace date " " "T"))
+
+(define (ljdump-entry-files path)
+  (filter (λ (file)
+            (string=? (substring (path->string file) 0 1)
+                      "L"))
+          (ls path)))
+
+(define (ljdump-comment-files path)
+  (filter (λ (file)
+            (string=? (substring (path->string file) 0 1)
+                      "C"))
+          (ls path)))
+
+;;; Bruce force hack to replace the &...; symbols in the HTML files
 ;;; because I don't know how to inject arbitrary literal HTML code
 ;;; for the HTML output. See notes in procedure
 ;;; `entry-file->scribble-data`
@@ -166,13 +194,15 @@
         (display data)))))
 
 (define (post-process file)
+  ;; FIXME: Is actually acceptable?
   (case (current-render-type)
     [(html) (replace-symbols-file
              (path-replace-suffix file ".html")
              symbol-table)]
     [else (void)]))
 
-;;; A neat debugging procedure shamelessly stolen from greghendershott/frog
+;;; A neat, debugging procedure shamelessly stolen from
+;;; http://github.com/greghendershott/frog/
 (define (prn lvl fmt . args)
   (when (>= (current-verbosity) lvl)
     (apply printf fmt args)
@@ -181,6 +211,7 @@
 (define (prn0 fmt . args) (apply prn 0 fmt args))
 (define (prn1 fmt . args) (apply prn 1 fmt args))
 (define (prn2 fmt . args) (apply prn 2 fmt args))
+
 
 ;;; Entries
 (define (entry-metadata data)
@@ -263,7 +294,31 @@
 (define (display-headers)
   (display-scribble-header))
 
+
 ;;; File writers
+
+;;; (_ entry-file->frog-markdown-data infile outfile)
+(define (out->file proc infile outfile)
+  (prn1 "Converting ~a to ~a." infile outfile)
+  (let ([ifile (ensure-object-path infile)]
+        [ofile (ensure-object-path outfile)])
+    (with-output-to-file ofile
+      #:exists 'truncate/replace
+      (λ () (proc infile)))))
+
+;; (_ entry-file->frog-markdown)
+(define-syntax (define/out->file stx)
+  (syntax-case stx ()
+    [(_ base)
+     (with-syntax ([name/data (format-id stx "~a-data" #'base)]
+                   [name/file (format-id stx "~a-file" #'base)])
+       #'(define (name/file infile outfile)
+           (out->file name/data infile outfile)))]))
+
+
+;;;----------------------------------------------------------------------
+;;; Entry files
+
 (define (entry-file->scribble-data file)
   (let ([item (entry-file-contents file)])
     (display-headers)
@@ -304,7 +359,7 @@
        (dl ($ 'bold "Body:"))
 
        ;; NOTE:
-       ;; The following expression quite well with the Markdown
+       ;; The following expression works quite well with the Markdown
        ;; output, only. But for the rest, the HTML tags are inserted.
        ;; This is understable for the PDF and LaTeX output since they
        ;; has no intrinsic knowldege of HTML.
@@ -319,6 +374,54 @@
        ;; all the &...; symbols found in the HTML document, as listed in
        ;; ./symbols.rkt
        (dl ($ 'para body))])))
+
+
+;;; Frog stuff
+
+(define (entry-file->frog-markdown-data file)
+  (let ([item (entry-file-contents file)])
+    (match item
+      [(list item-id
+             event-time
+             url
+             d-item-id
+             event-timestamp
+             reply-count
+             log-time
+             opt-preformatted
+             personifi-tags
+             has_screened
+             comment-alter
+             rev-time
+             opt-backdated
+             current-mood-id
+             current-music
+             rev-num
+             can-comment
+             a-num
+             subject
+             body
+             tag-list)
+       (let ([date-string (iso-8601-date event-time)])
+         (dl0 "    Title: " subject)
+         (dl0 "    Date: " date-string)
+         (dl0 "    Tags: " tag-list)
+         (newline)
+         (dl0 body))])))
+
+;; TODO
+;; - Create .md files that follows the Frog Markdown format
+;; - Use subject as TITLE?
+(define/out->file entry-file->frog-markdown)
+
+
+;; TODO
+(define (entry-file->frog-scribble-data file) #t)
+(define (entry-file->frog-scribble-file file) #t)
+
+
+;;;----------------------------------------------------------------------
+;;; Comment files
 
 (define (comment-file->scribble-data file)
   (display-headers)
@@ -340,6 +443,29 @@
        (dl ($ 'bold "Body:"))
        (dl ($ 'para body))])))
 
+
+;;; Disqus stuff
+(define (comment-file->disqus-data file) #t)
+
+(define/out->file comment-file->disqus)
+
+
+;;; Frog stuff
+
+;;; NOTE
+;;; Do we actually need to do this since we are going to use Disqus
+;;; for the comments?
+;;; What if we output directly to the Disqus XML format, instead?
+
+;;; TODO?
+(define (comment-file->frog-markdown-data file) #t)
+(define (comment-file->frog-markdown-file file) #t)
+(define (comment-file->frog-scribble-data file) #t)
+(define (comment-file->frog-scribble-file file) #t)
+
+
+;;; Regular dispatchers
+
 (define (xml-file->scribble-data file)
   (cond [(entry-file? file)
          (entry-file->scribble-data file)]
@@ -354,6 +480,8 @@
       #:exists 'truncate/replace
       (λ ()
         (xml-file->scribble-data ifile)))))
+
+
 
 ;;; Render
 (define (build-listof-parts files)
@@ -395,23 +523,76 @@
 ;;; Top-level
 (define (main files)
   (for ([file files])
-    (let ([scrbl-file (suffix->scrbl file)]
+    (let ([scribble-file (suffix->scrbl file)]
           [render-type (current-render-type)])
-      (xml-file->scribble-file file scrbl-file)
-      (when (and (file-exists? scrbl-file)
-                 render-type)
-        (render-file render-type scrbl-file))
-      (post-process file))))
+
+      ;; FIXME
+      ;; Should this part be conditionalized?
+      ;; Do we need to distinguish between non-Frog and Frog output?
+
+      (case render-type
+        [(frog-scribble frog-markdown)
+         ;; Do we need to create an intermediary Scribble file
+         ;; here,too?
+
+         ;; Or can we output directly to the target Scribble and
+         ;; Markdown files?
+
+         ;; Write separate output functions, a la,
+         ;; entry-file->scribble-data?
+         ;; entry-file->frog-scribble-data?
+         ;; entry-file->frog-markdown-data?
+
+         (displayln "Output to Frog-specific format.")]
+
+        [(html markdown text latex pdf)
+         ;; This part imply that the Scribble file created acts only
+         ;; as an intermediary format, and that we're mostly
+         ;; interested at the end formats like HTML.
+
+         ;; Should this function be renamed, to indicate that it is
+         ;; not the one to be used with Frog?
+
+         ;; Also, the output format does not follow any specific form.
+         (xml-file->scribble-file file scribble-file)
+
+         (when (and (file-exists? scribble-file)
+                    render-type)
+           (render-file render-type scribble-file))
+
+         (post-process file)]
+        [else
+         (displayln "foo")])
+
+      ;; (xml-file->scribble-file file scribble-file)
+
+      ;; (when (and (file-exists? scribble-file)
+      ;;            render-type)
+      ;;   (render-file render-type scribble-file))
+
+      ;; (post-process file)
+      )
+    ))
 
 (module+ main
   (command-line
    #:program program-name
+
    #:once-each
    ;; [("-r" "--render") type
    ;;  (""
    ;;   "Render Scribble file as <type>,"
    ;;   "where <type> is [markdown|md|text|txt|html|text|pdf]")
    ;;  (current-render-type (string->symbol type))]
+   [("--frog-scribble")
+    (""
+     "Render to Frog Scribble")
+    (current-render-type 'frog-scribble)]
+   [("--frog-markdown")
+    (""
+     "Render to Frog Markdown")
+    (current-render-type 'frog-markdown)]
+
    [("--html")
     (""
      "Render HTML files.")
@@ -432,6 +613,7 @@
     (""
     "Render PDF files.")
     (current-render-type 'pdf)]
+
    #:once-any
    [("-v" "--verbose")
     (""
