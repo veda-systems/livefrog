@@ -126,11 +126,24 @@
       (xml->xexp in))))
 
 ;;; Helpers
+
+
+;; (define (remove-newlines str)
+;;   ;; FIXME: improve this ugly hack
+;;   (string-replace str
+;;                   "\n"
+;;                   (string-replace str "\n " "")))
+
+(define (remove-newline-space str)
+  (string-replace str "\n " ""))
+
+(define (remove-newline str)
+  (string-replace str "\n" ""))
+
 (define (remove-newlines str)
-  ;; FIXME: improve this ugly hack
-  (string-replace str
-                  "\n"
-                  (string-replace str "\n " "")))
+  ((compose remove-newline remove-newline-space) str))
+
+
 
 (define (xml-suffix? str)
   (if (regexp-match "[xX][mM][lL]" (suffix str))
@@ -160,6 +173,7 @@
 (define (iso-8601-date date)
   (string-replace date " " "T"))
 
+;; The following two procedures are esh-too-pid.
 (define (ljdump-entry-files path)
   (filter (λ (file)
             (string=? (substring (path->string file) 0 1)
@@ -171,6 +185,45 @@
             (string=? (substring (path->string file) 0 1)
                       "C"))
           (ls path)))
+
+;; TODO
+(define (string-remove str char)
+  (string-replace str (char->string char) ""))
+
+(define excluded-title-chars
+  '(#\/ #\" #\? #\! #\' #\, #\. #\@ #\% #\= #\- #\+ #\^ #\& #\*
+    #\( #\) #\[ #\] #\{ #\} #\| #\" #\_ #\$ #\= #\: #\;))
+
+(define (spaces->dashes str)
+  (string-replace str " " "-"))
+
+(define string-normalizers
+  (append (list string-downcase
+                spaces->dashes
+                string-normalize-spaces)
+          (map (λ (char)
+                 (λ (str)
+                   (string-remove str char)))
+               excluded-title-chars)))
+
+(define (string-truncate str)
+  (let ([string-max (string-length str)]
+        [ideal-max 40])
+    (if (< string-max ideal-max)
+        (substring str 0 string-max)
+        (substring str 0 ideal-max))))
+
+(define (normalize-string str)
+  ((apply compose string-normalizers) str))
+
+(define (title-string str)
+  (if (= (string-length str) 0)
+      "title"
+      (let* ([s (string-truncate (normalize-string str))]
+             [end (string-ref s (- (string-length s) 1))])
+        (if (char=? end #\-)
+            (substring s 0 (- (string-length s) 2))
+            s))))
 
 ;;; Bruce force hack to replace the &...; symbols in the HTML files
 ;;; because I don't know how to inject arbitrary literal HTML code
@@ -402,23 +455,92 @@
              subject
              body
              tag-list)
-       (let ([date-string (iso-8601-date event-time)])
+       ;; We'll use log-time since it seems to be the earliest of all
+       ;; the dates available in the file
+       (let ([date-string (iso-8601-date log-time)])
          (dl0 "    Title: " subject)
          (dl0 "    Date: " date-string)
          (dl0 "    Tags: " tag-list)
          (newline)
          (dl0 body))])))
 
-;; TODO
-;; - Create .md files that follows the Frog Markdown format
-;; - Use subject as TITLE?
 (define/out->file entry-file->frog-markdown)
 
+;; TODO
+;; - write a common shit to extact the shit from the shit?!!
+;; - write a macro for this?
+
+;; (_ entry-file->frog-markdown-data
+;;    (let ([date-string (iso-8601-date log-time)])
+;;      (dl0 "    Title: " subject)
+;;      (dl0 "    Date: " date-string)
+;;      (dl0 "    Tags: " tag-list)
+;;      (newline)
+;;      (dl0 body)))
+;; (define-syntax (some-shit stx)
+;;   (syntax-case stx ()
+;;     [(_ name body ...)
+;;      #'(define (name file)
+;;          (let ([item (entry-file-contents file)])
+;;            (match item
+;;              [(list item-id
+;;                     event-time
+;;                     url
+;;                     d-item-id
+;;                     event-timestamp
+;;                     reply-count
+;;                     log-time
+;;                     opt-preformatted
+;;                     personifi-tags
+;;                     has_screened
+;;                     comment-alter
+;;                     rev-time
+;;                     opt-backdated
+;;                     current-mood-id
+;;                     current-music
+;;                     rev-num
+;;                     can-comment
+;;                     a-num
+;;                     subject
+;;                     body
+;;                     tag-list)
+;;               (let ([date-string (iso-8601-date log-time)])
+;;                 body ...)])))]))
+
+(define (make-title file)
+  (let ([item (entry-file-contents file)])
+    (match item
+      [(list item-id
+             event-time
+             url
+             d-item-id
+             event-timestamp
+             reply-count
+             log-time
+             opt-preformatted
+             personifi-tags
+             has_screened
+             comment-alter
+             rev-time
+             opt-backdated
+             current-mood-id
+             current-music
+             rev-num
+             can-comment
+             a-num
+             subject
+             body
+             tag-list)
+       (let ([date (car (string-split log-time))]
+             [title (title-string subject)])
+         (string-append date "-" title))])))
+
+(define (make-markdown-title file)
+  (string-append (make-title file) markdown-suffix))
 
 ;; TODO
 (define (entry-file->frog-scribble-data file) #t)
-(define (entry-file->frog-scribble-file file) #t)
-
+(define/out->file entry-file->frog-scribble)
 
 ;;;----------------------------------------------------------------------
 ;;; Comment files
