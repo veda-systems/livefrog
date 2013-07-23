@@ -110,8 +110,8 @@
 
 (define (dl . rst)
   ;; FIXME:
-  ;; (string-join rst)?
-  (displayln (apply string-append (add-between rst " ")))
+  ;; (displayln (apply string-append (add-between rst " ")))
+  (displayln (string-join rst))
   (newline))
 
 ;;; Essentials
@@ -535,8 +535,11 @@
              [title (title-string subject)])
          (string-append date "-" title))])))
 
-(define (make-markdown-title file)
-  (string-append (make-title file) markdown-suffix))
+(define (build-frog-markdown-path file)
+  (build-path (string-append (make-title file) markdown-suffix)))
+
+(define (build-frog-scribble-path file)
+  (build-path (string-append (make-title file) scribble-suffix)))
 
 ;; TODO
 (define (entry-file->frog-scribble-data file) #t)
@@ -566,11 +569,15 @@
        (dl ($ 'para body))])))
 
 
+;;;----------------------------------------------------------------------
 ;;; Disqus stuff
-(define (comment-file->disqus-data file) #t)
 
-(define/out->file comment-file->disqus)
+;; (define (comment-file->disqus-data file) #t)
+;; (define/out->file comment-file->disqus)
 
+(define (xml-file->disqus-comment-file infile outfile) #t)
+
+(define (build-disqus-comment-path file) #t)
 
 ;;; Frog stuff
 
@@ -588,6 +595,7 @@
 
 ;;; Regular dispatchers
 
+;; Scribble intermediary
 (define (xml-file->scribble-data file)
   (cond [(entry-file? file)
          (entry-file->scribble-data file)]
@@ -603,7 +611,18 @@
       (λ ()
         (xml-file->scribble-data ifile)))))
 
+;; Frog direct
+(define (xml-file->frog-markdown-file infile outfile)
+  (let ([ifile (ensure-object-path infile)]
+        [ofile (ensure-object-path outfile)])
+    (cond [(entry-file? ifile)
+           (entry-file->frog-markdown-file ifile ofile)]
+          ;; TODO: Since we're aiming to move the comments to Disqus,
+          ;; do we need to have this?
+          [(comment-file? ifile)
+           #t])))
 
+(define (xml-file->frog-scribble-file infile outfile) #t)
 
 ;;; Render
 (define (build-listof-parts files)
@@ -646,36 +665,32 @@
 (define (main files)
   (for ([file files])
     (let ([scribble-file (suffix->scrbl file)]
-          [render-type (current-render-type)])
-
-      ;; FIXME
-      ;; Should this part be conditionalized?
-      ;; Do we need to distinguish between non-Frog and Frog output?
+          [render-type (current-render-type)]
+          [frog-markdown-file (build-frog-markdown-path file)]
+          [frog-scribble-file (build-frog-scribble-path file)]
+          [disqus-comment-file (build-disqus-comment-path file)])
 
       (case render-type
-        [(frog-scribble frog-markdown)
-         ;; Do we need to create an intermediary Scribble file
-         ;; here,too?
+        [(frog-markdown)
+         (xml-file->frog-markdown-file
+          file
+          frog-markdown-file)]
 
-         ;; Or can we output directly to the target Scribble and
-         ;; Markdown files?
+        [(frog-scribble)
+         (xml-file->frog-scribble-file
+          file
+          frog-scribble-file)]
 
-         ;; Write separate output functions, a la,
-         ;; entry-file->scribble-data?
-         ;; entry-file->frog-scribble-data?
-         ;; entry-file->frog-markdown-data?
-
-         (displayln "Output to Frog-specific format.")]
+        [(disqus-comment)
+         (xml-file->disqus-comment-file
+          file
+          disqus-comment-file)]
 
         [(html markdown text latex pdf)
-         ;; This part imply that the Scribble file created acts only
-         ;; as an intermediary format, and that we're mostly
-         ;; interested at the end formats like HTML.
-
-         ;; Should this function be renamed, to indicate that it is
-         ;; not the one to be used with Frog?
-
-         ;; Also, the output format does not follow any specific form.
+         ;; The Scribble file created here acts only as an intermediary
+         ;; format, and that we're mostly interested at the end
+         ;; formats like HTML. It is also important to note that the
+         ;; file created does not follow any specific format.
          (xml-file->scribble-file file scribble-file)
 
          (when (and (file-exists? scribble-file)
@@ -683,37 +698,25 @@
            (render-file render-type scribble-file))
 
          (post-process file)]
-        [else
-         (displayln "foo")])
 
-      ;; (xml-file->scribble-file file scribble-file)
-
-      ;; (when (and (file-exists? scribble-file)
-      ;;            render-type)
-      ;;   (render-file render-type scribble-file))
-
-      ;; (post-process file)
-      )
-    ))
+        ;; TODO: This is ill, because it doesn't provide any form of
+        ;; feedback, to indicate whethere the operation was successful
+        ;; or not
+        [else #t]))))
 
 (module+ main
   (command-line
    #:program program-name
 
    #:once-each
-   ;; [("-r" "--render") type
-   ;;  (""
-   ;;   "Render Scribble file as <type>,"
-   ;;   "where <type> is [markdown|md|text|txt|html|text|pdf]")
-   ;;  (current-render-type (string->symbol type))]
-   [("--frog-scribble")
-    (""
-     "Render to Frog Scribble")
-    (current-render-type 'frog-scribble)]
-   [("--frog-markdown")
+   [("--frog-markdown" "--fm")
     (""
      "Render to Frog Markdown")
     (current-render-type 'frog-markdown)]
+   [("--frog-scribble" "--fs")
+    (""
+     "Render to Frog Scribble")
+    (current-render-type 'frog-scribble)]
 
    [("--html")
     (""
