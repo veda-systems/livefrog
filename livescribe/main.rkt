@@ -109,8 +109,6 @@
   (displayln (apply string-append rst)))
 
 (define (dl . rst)
-  ;; FIXME:
-  ;; (displayln (apply string-append (add-between rst " ")))
   (displayln (string-join rst))
   (newline))
 
@@ -126,14 +124,6 @@
       (xml->xexp in))))
 
 ;;; Helpers
-
-
-;; (define (remove-newlines str)
-;;   ;; FIXME: improve this ugly hack
-;;   (string-replace str
-;;                   "\n"
-;;                   (string-replace str "\n " "")))
-
 (define (remove-newline-space str)
   (string-replace str "\n " ""))
 
@@ -247,7 +237,7 @@
         (display data)))))
 
 (define (post-process file)
-  ;; FIXME: Is actually acceptable?
+  ;; TODO: Is actually acceptable?
   (case (current-render-type)
     [(html) (replace-symbols-file
              (path-replace-suffix file ".html")
@@ -349,7 +339,6 @@
 
 
 ;;; File writers
-
 ;;; (_ entry-file->frog-markdown-data infile outfile)
 (define (out->file proc infile outfile)
   (prn1 "Converting ~a to ~a." infile outfile)
@@ -369,9 +358,7 @@
            (out->file name/data infile outfile)))]))
 
 
-;;;----------------------------------------------------------------------
 ;;; Entry files
-
 (define (entry-file->scribble-data file)
   (let ([item (entry-file-contents file)])
     (display-headers)
@@ -545,9 +532,7 @@
 (define (entry-file->frog-scribble-data file) #t)
 (define/out->file entry-file->frog-scribble)
 
-;;;----------------------------------------------------------------------
 ;;; Comment files
-
 (define (comment-file->scribble-data file)
   (display-headers)
   (dl ($ 'title "Comments"))
@@ -569,9 +554,7 @@
        (dl ($ 'para body))])))
 
 
-;;;----------------------------------------------------------------------
 ;;; Disqus stuff
-
 ;; (define (comment-file->disqus-data file) #t)
 ;; (define/out->file comment-file->disqus)
 
@@ -592,6 +575,64 @@
 (define (comment-file->frog-scribble-data file) #t)
 (define (comment-file->frog-scribble-file file) #t)
 
+
+;; XML and Disqus stuff
+(define (print-xml xexpr)
+  (write-xml/content (xexpr->xml xexpr)))
+
+(define (print-disqus-comment post-title
+                              post-url
+                              post-content
+                              post-date
+
+                              comment-id
+                              comment-parent-id
+                              comment-author
+                              comment-author-email
+                              comment-author-url
+                              comment-author-ip
+                              comment-date
+                              comment-content
+
+                              disqus-user-id
+                              disqus-avatar
+
+                              (comment-approved "1")
+                              (disqus-id "disqus_identifier")
+                              (comment-status "open"))
+  (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+  (print-xml
+   `(rss ((version "2.0")
+          (xmlns:content "http://purl.org/rss/1.0/modules/content/")
+          (xmlns:dsq "http://www.disqus.com/")
+          (xmlns:dc "http://purl.org/dc/elements/1.1/")
+          (xmlns:wp "http://wordpress.org/export/1.0/"))
+         (channel
+          ()
+          (item
+           ()
+           (title () ,post-title)
+           (link () ,post-url)
+           (content:encoded () ,post-content)
+           (dsq:thread_identifier () ,disqus-id)
+           (wp:post_date_gmt () ,post-date)
+           (wp:comment_status () ,comment-status)
+           (wp:comment
+            ()
+            (dsq:remote
+             ()
+             (dsq:id () ,disqus-user-id)
+             (dsq:avatar () ,disqus-avatar))
+            (wp:comment_id () ,comment-id)
+            (wp:comment_author () ,comment-author)
+            (wp:comment_author_email () ,comment-author-email)
+            (wp:comment_author_url () ,comment-author-url)
+            (wp:comment_author_IP () ,comment-author-ip)
+            (wp:comment_date_gmt () ,comment-date)
+            (wp:comment_content () ,comment-content)
+            (wp:comment_approved () ,comment-approved)
+            (wp:comment_parent () ,comment-parent-id))))))
+  (newline))
 
 ;;; Regular dispatchers
 
