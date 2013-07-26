@@ -133,8 +133,6 @@
 (define (remove-newlines str)
   ((compose remove-newline remove-newline-space) str))
 
-
-
 (define (xml-suffix? str)
   (if (regexp-match "[xX][mM][lL]" (suffix str))
       #t
@@ -163,7 +161,7 @@
 (define (iso-8601-date date)
   (string-replace date " " "T"))
 
-;; The following two procedures are esh-too-pid.
+;;; The following two procedures are esh-too-pid.
 (define (ljdump-entry-files path)
   (filter (λ (file)
             (string=? (substring (path->string file) 0 1)
@@ -176,7 +174,6 @@
                       "C"))
           (ls path)))
 
-;; TODO
 (define (string-remove str char)
   (string-replace str (char->string char) ""))
 
@@ -327,7 +324,6 @@
         [scmd (symbol->string cmd)])
     (string-append at scmd dat open str close)))
 
-
 ;;; Headers
 (define (display-scribble-header)
   (dl scribble-header))
@@ -336,7 +332,6 @@
 
 (define (display-headers)
   (display-scribble-header))
-
 
 ;;; File writers
 ;;; (_ entry-file->frog-markdown-data infile outfile)
@@ -356,7 +351,6 @@
                    [name/file (format-id stx "~a-file" #'base)])
        #'(define (name/file infile outfile)
            (out->file name/data infile outfile)))]))
-
 
 ;;; Entry files
 (define (entry-file->scribble-data file)
@@ -416,8 +410,7 @@
        (dl ($ 'para body))])))
 
 
-;;; Frog stuff
-
+;;; Entry data via Frog
 (define (entry-file->frog-markdown-data file)
   (let ([item (entry-file-contents file)])
     (match item
@@ -453,46 +446,22 @@
 
 (define/out->file entry-file->frog-markdown)
 
-;; TODO
-;; - write a common shit to extact the shit from the shit?!!
-;; - write a macro for this?
+;; Comment data to Disqus
+(define (comment-file->disqus-comment-data file)
+  ;; (for ([item (comment-file-contents file)])
+  ;;   (match item
+  ;;     [(list id
+  ;;            parent-id
+  ;;            state
+  ;;            date
+  ;;            subject
+  ;;            body)
+  ;;      (print-disqus-comment ...)
+  ;;      ]))
+  #t
+  )
 
-;; (_ entry-file->frog-markdown-data
-;;    (let ([date-string (iso-8601-date log-time)])
-;;      (dl0 "    Title: " subject)
-;;      (dl0 "    Date: " date-string)
-;;      (dl0 "    Tags: " tag-list)
-;;      (newline)
-;;      (dl0 body)))
-;; (define-syntax (some-shit stx)
-;;   (syntax-case stx ()
-;;     [(_ name body ...)
-;;      #'(define (name file)
-;;          (let ([item (entry-file-contents file)])
-;;            (match item
-;;              [(list item-id
-;;                     event-time
-;;                     url
-;;                     d-item-id
-;;                     event-timestamp
-;;                     reply-count
-;;                     log-time
-;;                     opt-preformatted
-;;                     personifi-tags
-;;                     has_screened
-;;                     comment-alter
-;;                     rev-time
-;;                     opt-backdated
-;;                     current-mood-id
-;;                     current-music
-;;                     rev-num
-;;                     can-comment
-;;                     a-num
-;;                     subject
-;;                     body
-;;                     tag-list)
-;;               (let ([date-string (iso-8601-date log-time)])
-;;                 body ...)])))]))
+(define/out->file comment-file->disqus-comment)
 
 (define (make-title file)
   (let ([item (entry-file-contents file)])
@@ -558,7 +527,14 @@
 ;; (define (comment-file->disqus-data file) #t)
 ;; (define/out->file comment-file->disqus)
 
-(define (xml-file->disqus-comment-file infile outfile) #t)
+;; TODO: Merge this with xml-file->frog-markdown-file
+(define (foo->bar infile outfile)
+  (let ([ifile (ensure-object-path infile)]
+        [ofile (ensure-object-path outfile)])
+    (cond [(entry-file? ifile)
+           (entry-file->frog-markdown-file ifile ofile)]
+          [(comment-file? ifile)
+           (comment-file->disqus-comment-file ifile ofile)])))
 
 (define (build-disqus-comment-path file) #t)
 
@@ -723,9 +699,10 @@
           frog-scribble-file)]
 
         [(disqus-comment)
-         (xml-file->disqus-comment-file
-          file
-          disqus-comment-file)]
+         ;; (xml-file->disqus-comment-file
+         ;;  file
+         ;;  disqus-comment-file)
+         #t]
 
         [(html markdown text latex pdf)
          ;; The Scribble file created here acts only as an intermediary
