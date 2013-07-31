@@ -103,6 +103,7 @@
 
 (define comment-body-fields-xml
   '(subject
+    ;user
     body))
 
 (define (dl0 . rst)
@@ -285,6 +286,15 @@
   (append-map (λ (tag)
                 (let ([ltag (list tag)])
                   (case tag
+                    ;; TODO
+                    ;; The addition of the field "user", causes the bug.
+                    ;; This is tricky, because the tag <user> is not
+                    ;; present in all comments.
+                    ;; How best, should this be handled?
+
+                    ;; FIXME
+                    ;; Delay the introduction of the `user' field,
+                    ;; until the fix is ready.
                     [(subject)
                      (list (collect-tag-values data ltag))]
                     [(body)
@@ -446,22 +456,92 @@
 
 (define/out->file entry-file->frog-markdown)
 
-;; Comment data to Disqus
-(define (comment-file->disqus-comment-data file)
-  ;; (for ([item (comment-file-contents file)])
-  ;;   (match item
-  ;;     [(list id
-  ;;            parent-id
-  ;;            state
-  ;;            date
-  ;;            subject
-  ;;            body)
-  ;;      (print-disqus-comment ...)
-  ;;      ]))
-  #t
-  )
+;; Comment data for Disqus comment import use
+(define (comment-file->disqus-comment-data comment-file entry-file)
+  (let ([comment-item (comment-file-contents comment-file)]
+        [entry-item (entry-file-contents entry-file)])
+    (match entry-item
+      [(list item-id
+             event-time
+             url
+             d-item-id
+             event-timestamp
+             reply-count
+             log-time
+             opt-preformatted
+             personifi-tags
+             has_screened
+             comment-alter
+             rev-time
+             opt-backdated
+             current-mood-id
+             current-music
+             rev-num
+             can-comment
+             a-num
+             subject
+             body
+             tag-list)
+       (let ([date-string (iso-8601-date log-time)])
+         (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+         (print-xml
+          `(rss ((version "2.0")
+                 (xmlns:content "http://purl.org/rss/1.0/modules/content/")
+                 (xmlns:dsq "http://www.disqus.com/")
+                 (xmlns:dc "http://purl.org/dc/elements/1.1/")
+                 (xmlns:wp "http://wordpress.org/export/1.0/"))
+                (channel
+                 ()
+                 (item
+                  ()
 
-(define/out->file comment-file->disqus-comment)
+                  ;; TODO: Find a way to get these values
+                  (title () ,subject)
+                  (link () ,url)
+                  (content:encoded () "content")
+                  (dsq:thread_identifier () "disqus-id")
+                  (wp:post_date_gmt () ,log-time)
+                  (wp:comment_status () "open")
+
+                  ;; TODO: Where should `subject' be used?
+                  ,@(for/list ([i comment-item])
+                      (match i
+                        [(list id
+                               parent-id
+                               state
+                               date
+                               subject
+                               body)
+                         `(wp:comment
+                           ()
+                           (dsq:remote
+                            ()
+                            (dsq:id () "disqus-user-id")
+                            (dsq:avatar () "http://url.to/avatar.png"))
+                           (wp:comment_id () ,id)
+                           (wp:coment_author () "user")
+                           (wp:comment_author_email () "user@domain.com")
+                           (wp:comment_author_IP () "127.0.0.1")
+                           (wp:comment_date_gmt () ,date)
+                           (wp:comment_content () ,body)
+                           (wp:comment_approved () "1")
+                           (wp:comment_parent () ,parent-id))]))))))
+         (newline))])))
+
+;; TODO: Should this be used since comment-file->disqus-comment-data
+;; now has an arity of 2?
+;;(define/out->file comment-file->disqus-comment)
+
+;; Wait, does the Disqus spec say that an import file be created for
+;; each post, or a monolithic file, be used instead.
+(define (comment-file->disqus-comment-file comment-file entry-file disqus-file)
+  (let ([ifile1 (ensure-object-path comment-file)]
+        [ifile2 (ensure-object-path entry-file)]
+        [ofile (ensure-object-path disqus-file)])
+    (with-output-to-file ofile
+      #:exists 'truncate/replace
+      (λ ()
+        (comment-file->disqus-comment-data ifile1 ifile2)))))
 
 (define (make-title file)
   (let ([item (entry-file-contents file)])
@@ -512,6 +592,7 @@
              state
              date
              subject
+             user
              body)
        (dl ($ 'section subject))
        (dl ($ 'bold "Subject:") subject)
@@ -556,6 +637,7 @@
 (define (print-xml xexpr)
   (write-xml/content (xexpr->xml xexpr)))
 
+;; TODO: specify default values
 (define (print-disqus-comment post-title
                               post-url
                               post-content
@@ -593,6 +675,8 @@
            (dsq:thread_identifier () ,disqus-id)
            (wp:post_date_gmt () ,post-date)
            (wp:comment_status () ,comment-status)
+
+           ;; loop here
            (wp:comment
             ()
             (dsq:remote
