@@ -1,7 +1,9 @@
 #lang racket/base
 
-(require racket/contract)
-(require racket/list)
+(require
+ racket/contract
+ racket/string
+ racket/list)
 
 (provide
  (contract-out
@@ -36,6 +38,12 @@
   [string-last
    (->* (string?) ()
         char?)]
+  [string-remove
+   (->* (string? char?) ()
+        string?)]
+  [string-truncate
+   (->* (string?) ()
+        string?)]
   [ensure-string-path
    (->* ((or/c path? string?)) ()
         string?)]
@@ -120,6 +128,16 @@
 
 (define (string-last str)
   (string-first (string-reverse str)))
+
+(define (string-remove str char)
+  (string-replace str (char->string char) ""))
+
+(define (string-truncate str)
+  (let ([string-max (string-length str)]
+        [ideal-max 40])
+    (if (< string-max ideal-max)
+        (substring str 0 string-max)
+        (substring str 0 ideal-max))))
 
 (define (ensure-string-path path)
   (if (path? path)

@@ -61,15 +61,16 @@
 (define program-name "livescribe")
 
 (define scribble-suffix ".scrbl")
-
 (define markdown-suffix ".md")
+(define xml-suffix ".xml")
 
-(define scribble-header "#lang scribble/base")
+(define scribble-base-header "#lang scribble/base")
+(define scribble-manual-header "#lang scribble/manual")
 
 (define entry-marker 'event)
-
 (define comment-marker 'comments)
 
+;;; Entry fields
 (define entry-metadata-fields-xml
   '(itemid
     eventtime
@@ -95,6 +96,7 @@
     event
     taglist))
 
+;;; Comment fields
 (define comment-metadata-fields-xml
   '(id
     parentid
@@ -106,6 +108,7 @@
     ;user
     body))
 
+;;; String printers
 (define (dl0 . rst)
   (displayln (apply string-append rst)))
 
@@ -113,7 +116,7 @@
   (displayln (string-join rst))
   (newline))
 
-;;; Essentials
+;;; XML transformers
 (define (xml->xexp data)
   (xml->xexpr
    (document-element
@@ -139,11 +142,9 @@
       #t
       #f))
 
-(define (suffix->scrbl path)
-  (path-replace-suffix path scribble-suffix))
-
-(define (suffix->md path)
-  (path-replace-suffix path markdown-suffix))
+(define (suffix->scrbl path) (path-replace-suffix path scribble-suffix))
+(define (suffix->md path) (path-replace-suffix path markdown-suffix))
+(define (suffix->xml path) (path-replace-suffix path xml-suffix))
 
 (define (tag-value lst)
   (if (= (length lst) 3)
@@ -162,21 +163,19 @@
 (define (iso-8601-date date)
   (string-replace date " " "T"))
 
-;;; The following two procedures are esh-too-pid.
+;;; The following two procedures are trivialy stupid.
+;;; TODO: Should `in-directory' be used instead of `ls'?
 (define (ljdump-entry-files path)
   (filter (λ (file)
-            (string=? (substring (path->string file) 0 1)
-                      "L"))
+            (string=?
+             (substring (path->string file) 0 1) "L"))
           (ls path)))
 
 (define (ljdump-comment-files path)
   (filter (λ (file)
-            (string=? (substring (path->string file) 0 1)
-                      "C"))
+            (string=?
+             (substring (path->string file) 0 1) "C"))
           (ls path)))
-
-(define (string-remove str char)
-  (string-replace str (char->string char) ""))
 
 (define excluded-title-chars
   '(#\/ #\" #\? #\! #\' #\, #\. #\@ #\% #\= #\- #\+ #\^ #\& #\*
@@ -194,17 +193,10 @@
                    (string-remove str char)))
                excluded-title-chars)))
 
-(define (string-truncate str)
-  (let ([string-max (string-length str)]
-        [ideal-max 40])
-    (if (< string-max ideal-max)
-        (substring str 0 string-max)
-        (substring str 0 ideal-max))))
-
 (define (normalize-string str)
   ((apply compose string-normalizers) str))
 
-(define (title-string str)
+(define (make-title-string str)
   (if (= (string-length str) 0)
       "title"
       (let* ([s (string-truncate (normalize-string str))]
@@ -235,7 +227,9 @@
         (display data)))))
 
 (define (post-process file)
-  ;; TODO: Is actually acceptable?
+  ;; NOTE: This procedure can be used independently, although the
+  ;; conditionalization would make it (initially) unideal for
+  ;; general-purpose use
   (case (current-render-type)
     [(html) (replace-symbols-file
              (path-replace-suffix file ".html")
@@ -253,8 +247,7 @@
 (define (prn1 fmt . args) (apply prn 1 fmt args))
 (define (prn2 fmt . args) (apply prn 2 fmt args))
 
-
-;;; Entries
+;;; Entry data extractors
 (define (entry-metadata data)
   (collect-tag-values data entry-metadata-fields-xml))
 
@@ -276,7 +269,13 @@
   (let ([data (xml-file->xexp file)])
     (entry-data-contents data)))
 
-;;; Comments
+(define (entry-xexp? xexp)
+  (eqv? (car xexp) entry-marker))
+
+(define (entry-file? file)
+  (entry-xexp? (xml-file->xexp file)))
+
+;;; Comment data extractors
 (define (comment-metadata data)
   (for/list ([items (collect sxpath-value data
                              comment-metadata-fields-xml)])
@@ -287,7 +286,8 @@
                 (let ([ltag (list tag)])
                   (case tag
                     ;; TODO
-                    ;; The addition of the field "user", causes the bug.
+                    ;; The addition of the field "user", causes the
+                    ;; bug of not being able to run this proc correctly
                     ;; This is tricky, because the tag <user> is not
                     ;; present in all comments.
                     ;; How best, should this be handled?
@@ -312,15 +312,8 @@
   (let ([data (xml-file->xexp file)])
     (comment-data-contents data)))
 
-;;; Predicates
-(define (entry-xexp? xexp)
-  (eqv? (car xexp) entry-marker))
-
 (define (comment-xexp? xexp)
   (eqv? (car xexp) comment-marker))
-
-(define (entry-file? file)
-  (entry-xexp? (xml-file->xexp file)))
 
 (define (comment-file? file)
   (comment-xexp? (xml-file->xexp file)))
@@ -334,16 +327,7 @@
         [scmd (symbol->string cmd)])
     (string-append at scmd dat open str close)))
 
-;;; Headers
-(define (display-scribble-header)
-  (dl scribble-header))
-
-(define (create-sutils-file) '())
-
-(define (display-headers)
-  (display-scribble-header))
-
-;;; File writers
+;;; Helper shit
 ;;; (_ entry-file->frog-markdown-data infile outfile)
 (define (out->file proc infile outfile)
   (prn1 "Converting ~a to ~a." infile outfile)
@@ -362,10 +346,12 @@
        #'(define (name/file infile outfile)
            (out->file name/data infile outfile)))]))
 
-;;; Entry files
+;;; Entry file to non-Frog Scribble
+;;; The ->file dispatcher for this procedure is currently handled by
+;;; xml-file->scribble-file
 (define (entry-file->scribble-data file)
   (let ([item (entry-file-contents file)])
-    (display-headers)
+    (dl scribble-base-header)
     (match item
       [(list item-id
              event-time
@@ -419,8 +405,7 @@
        ;; ./symbols.rkt
        (dl ($ 'para body))])))
 
-
-;;; Entry data via Frog
+;;; Entry file to Frog Markdown data
 (define (entry-file->frog-markdown-data file)
   (let ([item (entry-file-contents file)])
     (match item
@@ -456,7 +441,24 @@
 
 (define/out->file entry-file->frog-markdown)
 
-;; Comment data for Disqus comment import use
+;;; Entry file to Frog Scribble data
+(define (entry-file->frog-scribble-data file) #t)
+
+(define/out->file entry-file->frog-scribble)
+
+;;; Comment file to Disqus data
+;;;
+;;; NOTE: For now, the entry file must be explicity specified because
+;;; I don't know of any other way to extract the entry/post-related
+;;; information
+;;;
+;;; TODO: Disqus suggests importing a single WordPress eXtended Rss
+;;; (WXR) XML file  for the comments
+;;;
+;;; TODO: Rename this procedure?
+;;;
+;;; TODO: Make this procedure loop over the current directory tree,
+;;; looking for comment-entry pairs?
 (define (comment-file->disqus-comment-data comment-file entry-file)
   (let ([comment-item (comment-file-contents comment-file)]
         [entry-item (entry-file-contents entry-file)])
@@ -492,10 +494,14 @@
                  (xmlns:wp "http://wordpress.org/export/1.0/"))
                 (channel
                  ()
+
+                 ;; TODO: create the top-level loop here for all
+                 ;; comment-entry pairs
                  (item
                   ()
 
-                  ;; TODO: Find a way to get these values
+                  ;; TODO: Find a better way to extract these data,
+                  ;; presuming there is such a better way.
                   (title () ,subject)
                   (link () ,url)
                   (content:encoded () "content")
@@ -522,18 +528,18 @@
                            (wp:coment_author () "user")
                            (wp:comment_author_email () "user@domain.com")
                            (wp:comment_author_IP () "127.0.0.1")
-                           (wp:comment_date_gmt () ,date)
+                           (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
                            (wp:comment_content () ,body)
                            (wp:comment_approved () "1")
                            (wp:comment_parent () ,parent-id))]))))))
          (newline))])))
 
-;; TODO: Should this be used since comment-file->disqus-comment-data
-;; now has an arity of 2?
+;;; This is disabled because the preceding procedure has an arity of three
 ;;(define/out->file comment-file->disqus-comment)
 
-;; Wait, does the Disqus spec say that an import file be created for
-;; each post, or a monolithic file, be used instead.
+;;; TODO
+;;; Wait, does the Disqus comment import spec say that an import file
+;;; be created for each post, or a monolithic file, be used instead.
 (define (comment-file->disqus-comment-file comment-file entry-file disqus-file)
   (let ([ifile1 (ensure-object-path comment-file)]
         [ifile2 (ensure-object-path entry-file)]
@@ -568,22 +574,21 @@
              body
              tag-list)
        (let ([date (car (string-split log-time))]
-             [title (title-string subject)])
+             [title (make-title-string subject)])
          (string-append date "-" title))])))
 
+;;; Trivial helpers for setting up the destination filename for Frog
+;;; writers
 (define (build-frog-markdown-path file)
   (build-path (string-append (make-title file) markdown-suffix)))
 
 (define (build-frog-scribble-path file)
   (build-path (string-append (make-title file) scribble-suffix)))
 
-;; TODO
-(define (entry-file->frog-scribble-data file) #t)
-(define/out->file entry-file->frog-scribble)
-
 ;;; Comment files
 (define (comment-file->scribble-data file)
-  (display-headers)
+  (dl scribble-base-header)
+  (dl scribble-base-header)
   (dl ($ 'title "Comments"))
   (for ([item (comment-file-contents file)])
     (match item
@@ -694,9 +699,8 @@
             (wp:comment_parent () ,comment-parent-id))))))
   (newline))
 
-;;; Regular dispatchers
-
-;; Scribble intermediary
+;;; File dispatchers
+;; Non-Frog Scribble
 (define (xml-file->scribble-data file)
   (cond [(entry-file? file)
          (entry-file->scribble-data file)]
@@ -712,7 +716,7 @@
       (λ ()
         (xml-file->scribble-data ifile)))))
 
-;; Frog direct
+;; Frog Markdown
 (define (xml-file->frog-markdown-file infile outfile)
   (let ([ifile (ensure-object-path infile)]
         [ofile (ensure-object-path outfile)])
@@ -725,7 +729,7 @@
 
 (define (xml-file->frog-scribble-file infile outfile) #t)
 
-;;; Render
+;;; Renderers
 (define (build-listof-parts files)
   (map (λ (file)
          (dynamic-require `(file ,file) 'doc))
