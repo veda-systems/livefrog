@@ -446,108 +446,96 @@
 
 (define/out->file entry-file->frog-scribble)
 
-;;; Comment file to Disqus data
-;;;
-;;; NOTE: For now, the entry file must be explicity specified because
-;;; I don't know of any other way to extract the entry/post-related
-;;; information
-;;;
-;;; TODO: Disqus suggests importing a single WordPress eXtended Rss
-;;; (WXR) XML file  for the comments
-;;;
-;;; TODO: Rename this procedure?
-;;;
-;;; TODO: Make this procedure loop over the current directory tree,
-;;; looking for comment-entry pairs?
-(define (comment-file->disqus-comment-data comment-file entry-file)
-  (let ([comment-item (comment-file-contents comment-file)]
-        [entry-item (entry-file-contents entry-file)])
-    (match entry-item
-      [(list item-id
-             event-time
-             url
-             d-item-id
-             event-timestamp
-             reply-count
-             log-time
-             opt-preformatted
-             personifi-tags
-             has_screened
-             comment-alter
-             rev-time
-             opt-backdated
-             current-mood-id
-             current-music
-             rev-num
-             can-comment
-             a-num
-             subject
-             body
-             tag-list)
-       (let ([date-string (iso-8601-date log-time)])
-         (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-         (print-xml
-          `(rss ((version "2.0")
-                 (xmlns:content "http://purl.org/rss/1.0/modules/content/")
-                 (xmlns:dsq "http://www.disqus.com/")
-                 (xmlns:dc "http://purl.org/dc/elements/1.1/")
-                 (xmlns:wp "http://wordpress.org/export/1.0/"))
-                (channel
-                 ()
+;;; Build the Disqus import file
+(define (build-entry-comment-pairs (directory "."))
+  (filter (lambda (x)
+            (not (empty? x)))
+          (for/list ([index (in-naturals)]
+                     [file (directory-list directory)])
+            (let* ([num (number->string index)]
+                   [l-num (string-append "L-" num)]
+                   [c-num (string-append "C-" num)])
+              (if (and (file-exists? l-num)
+                       (file-exists? c-num))
+                  (list l-num c-num)
+                  '())))))
 
-                 ;; TODO: create the top-level loop here for all
-                 ;; comment-entry pairs
-                 (item
-                  ()
-
-                  ;; TODO: Find a better way to extract these data,
-                  ;; presuming there is such a better way.
-                  (title () ,subject)
-                  (link () ,url)
-                  (content:encoded () "content")
-                  (dsq:thread_identifier () "disqus-id")
-                  (wp:post_date_gmt () ,log-time)
-                  (wp:comment_status () "open")
-
-                  ;; TODO: Where should `subject' be used?
-                  ,@(for/list ([i comment-item])
-                      (match i
-                        [(list id
-                               parent-id
-                               state
-                               date
-                               subject
-                               body)
-                         `(wp:comment
-                           ()
-                           (dsq:remote
+(define (build-disqus-comment-data (directory (current-directory)))
+  (let ([path-pairs (build-entry-comment-pairs directory)])
+    (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+    (print-xml
+     `(rss ((version "2.0")
+            (xmlns:content "http://purl.org/rss/1.0/modules/content/")
+            (xmlns:dsq "http://www.disqus.com/")
+            (xmlns:dc "http://purl.org/dc/elements/1.1/")
+            (xmlns:wp "http://wordpress.org/export/1.0/"))
+           (channel
+            ()
+            ,@(for/list ([path-pair path-pairs])
+                (match path-pair
+                  [(list entry-file comment-file)
+                   (let ([entry-item (entry-file-contents entry-file)]
+                         [comment-item (comment-file-contents comment-file)])
+                     (match entry-item
+                       [(list item-id
+                              event-time
+                              url
+                              d-item-id
+                              event-timestamp
+                              reply-count
+                              log-time
+                              opt-preformatted
+                              personifi-tags
+                              has_screened
+                              comment-alter
+                              rev-time
+                              opt-backdated
+                              current-mood-id
+                              current-music
+                              rev-num
+                              can-comment
+                              a-num
+                              subject
+                              body
+                              tag-list)
+                        (let ([date-string (iso-8601-date log-time)])
+                          `(item
                             ()
-                            (dsq:id () "disqus-user-id")
-                            (dsq:avatar () "http://url.to/avatar.png"))
-                           (wp:comment_id () ,id)
-                           (wp:coment_author () "user")
-                           (wp:comment_author_email () "user@domain.com")
-                           (wp:comment_author_IP () "127.0.0.1")
-                           (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
-                           (wp:comment_content () ,body)
-                           (wp:comment_approved () "1")
-                           (wp:comment_parent () ,parent-id))]))))))
-         (newline))])))
+                            (title () ,subject)
+                            (link () ,url)
+                            (content:encoded () "content")
+                            (dsq:thread_identifier () "disqus-id")
+                            (wp:post_date_gmt () ,log-time)
+                            (wp:comment_status () "open")
 
-;;; This is disabled because the preceding procedure has an arity of three
-;;(define/out->file comment-file->disqus-comment)
+                            ,@(for/list ([c-item comment-item])
+                                (match c-item
+                                  [(list id
+                                         parent-id
+                                         state
+                                         date
+                                         subject
+                                         body)
+                                   `(wp:comment
+                                     ()
+                                     (dsq:remote
+                                      ()
+                                      (dsq:id () "disqus-user-id")
+                                      (dsq:avatar () "http://url.to/avatar.png"))
+                                     (wp:comment_id () ,id)
+                                     (wp:coment_author () "user")
+                                     (wp:comment_author_email () "user@domain.com")
+                                     (wp:comment_author_IP () "127.0.0.1")
+                                     (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
+                                     (wp:comment_content () ,body)
+                                     (wp:comment_approved () "1")
+                                     (wp:comment_parent () ,parent-id))]))))]))])))))))
 
-;;; TODO
-;;; Wait, does the Disqus comment import spec say that an import file
-;;; be created for each post, or a monolithic file, be used instead.
-(define (comment-file->disqus-comment-file comment-file entry-file disqus-file)
-  (let ([ifile1 (ensure-object-path comment-file)]
-        [ifile2 (ensure-object-path entry-file)]
-        [ofile (ensure-object-path disqus-file)])
-    (with-output-to-file ofile
-      #:exists 'truncate/replace
-      (λ ()
-        (comment-file->disqus-comment-data ifile1 ifile2)))))
+(define (build-disqus-comment-file directory output-file)
+  (with-output-to-file output-file
+    #:exists 'truncate/replace
+    (λ ()
+      (build-disqus-comment-data directory))))
 
 (define (make-title file)
   (let ([item (entry-file-contents file)])
@@ -614,13 +602,13 @@
 ;; (define/out->file comment-file->disqus)
 
 ;; TODO: Merge this with xml-file->frog-markdown-file
-(define (foo->bar infile outfile)
-  (let ([ifile (ensure-object-path infile)]
-        [ofile (ensure-object-path outfile)])
-    (cond [(entry-file? ifile)
-           (entry-file->frog-markdown-file ifile ofile)]
-          [(comment-file? ifile)
-           (comment-file->disqus-comment-file ifile ofile)])))
+;; (define (foo->bar infile outfile)
+;;   (let ([ifile (ensure-object-path infile)]
+;;         [ofile (ensure-object-path outfile)])
+;;     (cond [(entry-file? ifile)
+;;            (entry-file->frog-markdown-file ifile ofile)]
+;;           [(comment-file? ifile)
+;;            (comment-file->disqus-comment-file ifile ofile)])))
 
 (define (build-disqus-comment-path file) #t)
 
