@@ -503,7 +503,7 @@
                             ()
                             (title () ,subject)
                             (link () ,url)
-                            (content:encoded () "content")
+                            (content:encoded () ,(string-append "<![CDATA[content]]>"))
                             (dsq:thread_identifier () "disqus-id")
                             (wp:post_date_gmt () ,log-time)
                             (wp:comment_status () "open")
@@ -523,11 +523,15 @@
                                       (dsq:id () "disqus-user-id")
                                       (dsq:avatar () "http://url.to/avatar.png"))
                                      (wp:comment_id () ,id)
+
+                                     ;; Enable the field `user' in comment-body-fields-xml to be able
+                                     ;; to use this.
                                      (wp:coment_author () "user")
+
                                      (wp:comment_author_email () "user@domain.com")
                                      (wp:comment_author_IP () "127.0.0.1")
-                                     (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
-                                     (wp:comment_content () ,body)
+                                     (wp:comment_date_gmt () ,(string-replace date-string "T" " "))b
+                                     (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
                                      (wp:comment_approved () "1")
                                      (wp:comment_parent () ,parent-id))]))))]))])))))))
 
@@ -535,7 +539,9 @@
   (with-output-to-file output-file
     #:exists 'truncate/replace
     (λ ()
-      (build-disqus-comment-data directory))))
+      (build-disqus-comment-data directory)))
+  ;; (replace-symbols-file output-file symbol-table)
+  )
 
 (define (make-title file)
   (let ([item (entry-file-contents file)])
