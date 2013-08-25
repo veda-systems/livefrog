@@ -104,8 +104,8 @@
     date))
 
 (define comment-body-fields-xml
-  '(subject
-    ;user
+  '(user
+    subject
     body))
 
 ;;; String printers
@@ -146,6 +146,8 @@
 (define (suffix->md path) (path-replace-suffix path markdown-suffix))
 (define (suffix->xml path) (path-replace-suffix path xml-suffix))
 
+;;; (tag-value '((user () "karim_sabi")))
+;;; "karim_sabi"
 (define (tag-value lst)
   (if (= (length lst) 3)
       (string-trim (third lst))
@@ -285,16 +287,12 @@
   (append-map (λ (tag)
                 (let ([ltag (list tag)])
                   (case tag
-                    ;; TODO
-                    ;; The addition of the field "user", causes the
-                    ;; bug of not being able to run this proc correctly
-                    ;; This is tricky, because the tag <user> is not
-                    ;; present in all comments.
-                    ;; How best, should this be handled?
-
-                    ;; FIXME
-                    ;; Delay the introduction of the `user' field,
-                    ;; until the fix is ready.
+                    [(user)
+                     (list
+                      (map (λ (path)
+                             (cond [(eqv? (car path) 'user) (third path)]
+                                   [else "anonymous"]))
+                           (map fifth ((sxpath '(comment)) data))))]
                     [(subject)
                      (list (collect-tag-values data ltag))]
                     [(body)
@@ -448,7 +446,7 @@
 
 ;;; Build the Disqus import file
 (define (build-entry-comment-pairs (directory "."))
-  (filter (lambda (x)
+  (filter (λ (x)
             (not (empty? x)))
           (for/list ([index (in-naturals)]
                      [file (directory-list directory)])
@@ -502,6 +500,9 @@
                           `(item
                             ()
                             (title () ,subject)
+
+                            ;; TODO: Will this match with the Disqus data
+                            ;; Should I use the "new" URL from the new blog location instead?
                             (link () ,url)
                             (content:encoded () ,(string-append "<![CDATA[content]]>"))
                             (dsq:thread_identifier () "disqus-id")
@@ -514,6 +515,7 @@
                                          parent-id
                                          state
                                          date
+                                         user
                                          subject
                                          body)
                                    `(wp:comment
@@ -523,14 +525,14 @@
                                       (dsq:id () "disqus-user-id")
                                       (dsq:avatar () "http://url.to/avatar.png"))
                                      (wp:comment_id () ,id)
+                                     (wp:coment_author () ,user)
 
-                                     ;; Enable the field `user' in comment-body-fields-xml to be able
-                                     ;; to use this.
-                                     (wp:coment_author () "user")
-
-                                     (wp:comment_author_email () "user@domain.com")
+                                     ;; The Disqus spec at http://help.disqus.com/customer/portal/articles/472150
+                                     ;; says that this field has to be unique to each user, or else comments
+                                     ;; would appear as if they came from a single user
+                                     (wp:comment_author_email () (string-append user "@domain.com"))
                                      (wp:comment_author_IP () "127.0.0.1")
-                                     (wp:comment_date_gmt () ,(string-replace date-string "T" " "))b
+                                     (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
                                      (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
                                      (wp:comment_approved () "1")
                                      (wp:comment_parent () ,parent-id))]))))]))])))))))
@@ -540,8 +542,7 @@
     #:exists 'truncate/replace
     (λ ()
       (build-disqus-comment-data directory)))
-  ;; (replace-symbols-file output-file symbol-table)
-  )
+  (replace-symbols-file output-file symbol-table))
 
 (define (make-title file)
   (let ([item (entry-file-contents file)])
@@ -590,8 +591,8 @@
              parent-id
              state
              date
-             subject
              user
+             subject
              body)
        (dl ($ 'section subject))
        (dl ($ 'bold "Subject:") subject)
