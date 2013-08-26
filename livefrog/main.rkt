@@ -59,12 +59,12 @@
 
 (define current-verbosity (make-parameter 0))
 (define current-render-type (make-parameter #f))
-
+(define current-disqus-file (make-parameter #f))
 
 ;;;-------------------------------------------------------------------
 ;;; Global definitions
 
-(define program-name "livescribe")
+(define program-name "livefrog")
 
 (define scribble-suffix ".scrbl")
 (define markdown-suffix ".md")
@@ -718,41 +718,36 @@
 ;;; Top-level
 
 (define (main files)
-  (for ([file files])
-    (let ([scribble-file (suffix->scrbl file)]
-          [render-type (current-render-type)]
-          [frog-markdown-file (build-frog-markdown-path file)]
-          [frog-scribble-file (build-frog-scribble-path file)]
-          [disqus-comment-file (build-disqus-comment-path)])
+  (let ([render-type (current-render-type)])
+    (case render-type
+      [(disqus-comment)
+       (build-disqus-comment-file (current-directory) (current-disqus-file))]
+      [else
+       (for ([file files])
+         (let ([scribble-file (suffix->scrbl file)]
+               [disqus-comment-file (build-disqus-comment-path)])
+           (case render-type
+             [(frog-markdown frog-scribble)
+              (case render-type
+                [(frog-markdown)
+                 (xml-file->frog-markdown-file file (build-frog-markdown-path file))]
+                [(frog-scribble)
+                 (xml-file->frog-scribble-file file (build-frog-scribble-path file))])]
 
-      (case render-type
-        [(frog-markdown)
-         (xml-file->frog-markdown-file file frog-markdown-file)]
+             [(html markdown text latex pdf)
+              ;; The Scribble file created here acts only as an intermediary
+              ;; format, and that we're mostly interested at the end
+              ;; formats like HTML. It is also important to note that the
+              ;; files created do not follow a specific format.
+              (xml-file->scribble-file file scribble-file)
 
-        ;; Currently does nothing
-        [(frog-scribble)
-         (xml-file->frog-scribble-file file frog-scribble-file)]
+              (when (and (file-exists? scribble-file)
+                         render-type)
+                (render-file render-type scribble-file))
 
-        [(disqus-comment)
-         (build-disqus-comment-file (current-directory) disqus-comment-file)]
+              (post-process file)]
 
-        [(html markdown text latex pdf)
-         ;; The Scribble file created here acts only as an intermediary
-         ;; format, and that we're mostly interested at the end
-         ;; formats like HTML. It is also important to note that the
-         ;; files created do not follow a specific format.
-         (xml-file->scribble-file file scribble-file)
-
-         (when (and (file-exists? scribble-file)
-                    render-type)
-           (render-file render-type scribble-file))
-
-         (post-process file)]
-
-        ;; TODO: This is ill, because it doesn't provide any form of
-        ;; feedback, to indicate whethere the operation was successful
-        ;; or not
-        [else #t]))))
+             [else #f])))])))
 
 (module+ main
   (command-line
@@ -761,16 +756,18 @@
    #:once-each
    [("--frog-markdown" "--fm")
     (""
-     "Render to Frog Markdown.")
+     "Render to Frog Markdown output.")
     (current-render-type 'frog-markdown)]
    [("--frog-scribble" "--fs")
     (""
-     "Render to Frog Scribble.")
+     "Render to Frog Scribble output.")
     (current-render-type 'frog-scribble)]
 
-   [("--disqus-comment" "--dc")
+   [("--disqus-file" "--disqus" "--dq")
+    disqus-file
     (""
      "Build the Disqus XML comment file.")
+    (current-disqus-file disqus-file)
     (current-render-type 'disqus-comment)]
 
    [("--html")
@@ -805,6 +802,10 @@
      "Compile with very verbose messages.")
     (current-verbosity 2)
     (prn2 "Very verbose output enabled.")]
-   #:args (file . another-file)
-   (let ([files (cons file another-file)])
-     (main files))))
+
+   ;; #:args (file . another-file)
+   ;; (let ([files (cons file another-file)])
+   ;;   (main files))
+
+   #:args files
+   (main files)))

@@ -1,6 +1,6 @@
 # Introduction
 
-__Livescribe__ is a [Racket](http://racket-lang.org) program, used to
+__Livefrog__ is a [Racket](http://racket-lang.org) program, used to
 convert the XML files created by
 [ljdump](https://github.com/ghewgill/ljdump), or
 [ljmigrate](https://github.com/ceejbot/ljmigrate), to
@@ -12,20 +12,20 @@ owner of the journal, and comments by journal viewers, respectively.
 
 # Installation
 
-__Livescribe__ is available via Racket's
+__Livefrog__ is available via Racket's
 [Planet2](http://pkg.racket-lang.org).
 
 ```
-raco pkg install livescribe
+raco pkg install livefrog
 ```
 
-If that doesn't work, install the dependencies, and __Livescribe__
+If that doesn't work, install the dependencies, and __Livefrog__
 itself, from the local disk.
 
 ```
 git clone http://github.com/jbclements/sxml.git
-git clone http://github.com/ebzzry/livescribe.git
-raco pkg install sxml/ livescribe/
+git clone http://github.com/ebzzry/livefrog.git
+raco pkg install sxml/ livefrog/
 ```
 
 The trailing slashes are important, to tell `raco` that you are
@@ -38,14 +38,14 @@ the sources from the internet.
 To convert the file named `file.xml` to `file.scrbl`:
 
 ```
-raco livescribe file.xml
+raco livefrog file.xml
 ```
 
 Like above, but in addition to generating `file.scrbl`, render it to
 `file.html` as well, as if by running `scribble --html file.scrbl`.
 
 ```
-raco livescribe --html file.xml
+raco livefrog --html file.xml
 ```
 
 Again, like above, but in addition to generating `file.scrbl`, render
@@ -53,52 +53,52 @@ it to `file.md` as well, as if by running `scribble --markdown
 file.scrbl`.
 
 ```
-raco livescribe --markdown file.xml
+raco livefrog --markdown file.xml
 ```
 
 
 To display the list of available command line options and switches.
 
 ```
-raco livescribe -h
+raco livefrog -h
 ```
 
 
 # Updating
 
-If you installed __Livescribe__ using the first method described in the
+If you installed __Livefrog__ using the first method described in the
 section *Introduction*, you can update it by running:
 
 ```
-raco pkg update livescribe
+raco pkg update livefrog
 ```
 
 However, if you used the latter method, you may update it by pulling
-the updates, uninstalling __Livescribe__, then installing it
+the updates, uninstalling __Livefrog__, then installing it
 again:
 
 ```
-cd livescribe
+cd livefrog
 git pull origin master
 cd ..
-raco pkg remove livescribe
-raco pkg install livescribe/
+raco pkg remove livefrog
+raco pkg install livefrog/
 ```
 
 
 # Miscellany
 
 To reduce typing, you may optionally create an alias to `raco
-livescribe` in your shell.
+livefrog` in your shell.
 
 Sh-like shells:
 ```
-echo 'alias livescribe="raco livescribe"' >> ~/.bashrc
+echo 'alias livefrog="raco livefrog"' >> ~/.bashrc
 ```
 
 Csh-like shells:
 ```
-echo 'alias livescribe raco livescribe' >> ~/.cshrc
+echo 'alias livefrog raco livefrog' >> ~/.cshrc
 ```
 
 Replace `.bashrc`, and `.cshrc`, with the appropriate init file for
@@ -108,7 +108,5 @@ your shell.
 # Todo
 
 0. Enable [Frog](https://github.com/greghendershott/frog) markdown output.
-0. Use tree system to create proper references to parent comments.
-0. Write Disqus comment writer.
 0. Create tests.
 0. Enable HTML inlining.
