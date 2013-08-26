@@ -53,11 +53,17 @@
    (->* ((list/c file-exists? string?)) ()
         any/c)]))
 
+
+;;;-------------------------------------------------------------------
 ;;; Parameters
+
 (define current-verbosity (make-parameter 0))
 (define current-render-type (make-parameter #f))
 
+
+;;;-------------------------------------------------------------------
 ;;; Global definitions
+
 (define program-name "livescribe")
 
 (define scribble-suffix ".scrbl")
@@ -70,7 +76,10 @@
 (define entry-marker 'event)
 (define comment-marker 'comments)
 
+
+;;;-------------------------------------------------------------------
 ;;; Entry fields
+
 (define entry-metadata-fields-xml
   '(itemid
     eventtime
@@ -96,7 +105,10 @@
     event
     taglist))
 
+
+;;;-------------------------------------------------------------------
 ;;; Comment fields
+
 (define comment-metadata-fields-xml
   '(id
     parentid
@@ -108,7 +120,10 @@
     subject
     body))
 
+
+;;;-------------------------------------------------------------------
 ;;; String printers
+
 (define (dl0 . rst)
   (displayln (apply string-append rst)))
 
@@ -116,7 +131,10 @@
   (displayln (string-join rst))
   (newline))
 
+
+;;;-------------------------------------------------------------------
 ;;; XML transformers
+
 (define (xml->xexp data)
   (xml->xexpr
    (document-element
@@ -127,7 +145,10 @@
     (λ (in)
       (xml->xexp in))))
 
+
+;;;-------------------------------------------------------------------
 ;;; Helpers
+
 (define (remove-newline-space str)
   (string-replace str "\n " ""))
 
@@ -165,8 +186,6 @@
 (define (iso-8601-date date)
   (string-replace date " " "T"))
 
-;;; The following two procedures are trivialy stupid.
-;;; TODO: Should `in-directory' be used instead of `ls'?
 (define (ljdump-entry-files path)
   (filter (λ (file)
             (string=?
@@ -229,9 +248,6 @@
         (display data)))))
 
 (define (post-process file)
-  ;; NOTE: This procedure can be used independently, although the
-  ;; conditionalization would make it (initially) unideal for
-  ;; general-purpose use
   (case (current-render-type)
     [(html) (replace-symbols-file
              (path-replace-suffix file ".html")
@@ -249,7 +265,37 @@
 (define (prn1 fmt . args) (apply prn 1 fmt args))
 (define (prn2 fmt . args) (apply prn 2 fmt args))
 
+;;; String formatter
+(define ($ cmd str [datum ""] [open "|{"] [close "}|"])
+  (let ([at "@"]
+        [dat (cond [(not (empty-string? datum))
+                    (string-append "[" datum "]")]
+                   [else ""])]
+        [scmd (symbol->string cmd)])
+    (string-append at scmd dat open str close)))
+
+;;; (_ entry-file->frog-markdown-data infile outfile)
+(define (out->file proc infile outfile)
+  (prn1 "Converting ~a to ~a." infile outfile)
+  (let ([infile-path (ensure-object-path infile)]
+        [outfile-path (ensure-object-path outfile)])
+    (with-output-to-file outfile-path
+      #:exists 'truncate/replace
+      (λ () (proc infile)))))
+
+;; (_ entry-file->frog-markdown)
+(define-syntax (define/out->file stx)
+  (syntax-case stx ()
+    [(_ base)
+     (with-syntax ([name/data (format-id stx "~a-data" #'base)]
+                   [name/file (format-id stx "~a-file" #'base)])
+       #'(define (name/file infile outfile)
+           (out->file name/data infile outfile)))]))
+
+
+;;;-------------------------------------------------------------------
 ;;; Entry data extractors
+
 (define (entry-metadata data)
   (collect-tag-values data entry-metadata-fields-xml))
 
@@ -277,7 +323,10 @@
 (define (entry-file? file)
   (entry-xexp? (xml-file->xexp file)))
 
+
+;;;-------------------------------------------------------------------
 ;;; Comment data extractors
+
 (define (comment-metadata data)
   (for/list ([items (collect sxpath-value data
                              comment-metadata-fields-xml)])
@@ -316,37 +365,11 @@
 (define (comment-file? file)
   (comment-xexp? (xml-file->xexp file)))
 
-;;; String formatters
-(define ($ cmd str [datum ""] [open "|{"] [close "}|"])
-  (let ([at "@"]
-        [dat (cond [(not (empty-string? datum))
-                    (string-append "[" datum "]")]
-                   [else ""])]
-        [scmd (symbol->string cmd)])
-    (string-append at scmd dat open str close)))
 
-;;; Helper shit
-;;; (_ entry-file->frog-markdown-data infile outfile)
-(define (out->file proc infile outfile)
-  (prn1 "Converting ~a to ~a." infile outfile)
-  (let ([ifile (ensure-object-path infile)]
-        [ofile (ensure-object-path outfile)])
-    (with-output-to-file ofile
-      #:exists 'truncate/replace
-      (λ () (proc infile)))))
+;;;-------------------------------------------------------------------
+;;; Data formatters
 
-;; (_ entry-file->frog-markdown)
-(define-syntax (define/out->file stx)
-  (syntax-case stx ()
-    [(_ base)
-     (with-syntax ([name/data (format-id stx "~a-data" #'base)]
-                   [name/file (format-id stx "~a-file" #'base)])
-       #'(define (name/file infile outfile)
-           (out->file name/data infile outfile)))]))
-
-;;; Entry file to non-Frog Scribble
-;;; The ->file dispatcher for this procedure is currently handled by
-;;; xml-file->scribble-file
+;;; Entry file to generic Scribble data
 (define (entry-file->scribble-data file)
   (let ([item (entry-file-contents file)])
     (dl scribble-base-header)
@@ -440,11 +463,20 @@
 (define/out->file entry-file->frog-markdown)
 
 ;;; Entry file to Frog Scribble data
+;;; TODO
 (define (entry-file->frog-scribble-data file) #t)
-
 (define/out->file entry-file->frog-scribble)
 
-;;; Build the Disqus import file
+
+;;;-------------------------------------------------------------------
+;;; Disqus stuff
+
+(define (build-disqus-comment-path)
+  (build-path "disqus-xml"))
+
+(define (print-xml xexpr)
+  (write-xml/content (xexpr->xml xexpr)))
+
 (define (build-entry-comment-pairs (directory "."))
   (filter (λ (x)
             (not (empty? x)))
@@ -501,7 +533,7 @@
                             ()
                             (title () ,subject)
 
-                            ;; TODO: Will this match with the Disqus data
+                            ;; TODO: Will this match with the Disqus data?
                             ;; Should I use the "new" URL from the new blog location instead?
                             (link () ,url)
                             (content:encoded () ,(string-append "<![CDATA[content]]>"))
@@ -530,7 +562,11 @@
                                      ;; The Disqus spec at http://help.disqus.com/customer/portal/articles/472150
                                      ;; says that this field has to be unique to each user, or else comments
                                      ;; would appear as if they came from a single user
-                                     (wp:comment_author_email () (string-append user "@domain.com"))
+                                     (wp:comment_author_email
+                                      ()
+                                      ,(string-append
+                                        (string-replace user " " "_")
+                                        "@domain.com"))
                                      (wp:comment_author_IP () "127.0.0.1")
                                      (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
                                      (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
@@ -604,98 +640,10 @@
        (dl ($ 'para body))])))
 
 
-;;; Disqus stuff
-;; (define (comment-file->disqus-data file) #t)
-;; (define/out->file comment-file->disqus)
+;;;-------------------------------------------------------------------
+;;; File creators
 
-;; TODO: Merge this with xml-file->frog-markdown-file
-;; (define (foo->bar infile outfile)
-;;   (let ([ifile (ensure-object-path infile)]
-;;         [ofile (ensure-object-path outfile)])
-;;     (cond [(entry-file? ifile)
-;;            (entry-file->frog-markdown-file ifile ofile)]
-;;           [(comment-file? ifile)
-;;            (comment-file->disqus-comment-file ifile ofile)])))
-
-(define (build-disqus-comment-path file) #t)
-
-;;; Frog stuff
-
-;;; NOTE
-;;; Do we actually need to do this since we are going to use Disqus
-;;; for the comments?
-;;; What if we output directly to the Disqus XML format, instead?
-
-;;; TODO?
-(define (comment-file->frog-markdown-data file) #t)
-(define (comment-file->frog-markdown-file file) #t)
-(define (comment-file->frog-scribble-data file) #t)
-(define (comment-file->frog-scribble-file file) #t)
-
-
-;; XML and Disqus stuff
-(define (print-xml xexpr)
-  (write-xml/content (xexpr->xml xexpr)))
-
-;; TODO: specify default values
-(define (print-disqus-comment post-title
-                              post-url
-                              post-content
-                              post-date
-
-                              comment-id
-                              comment-parent-id
-                              comment-author
-                              comment-author-email
-                              comment-author-url
-                              comment-author-ip
-                              comment-date
-                              comment-content
-
-                              disqus-user-id
-                              disqus-avatar
-
-                              (comment-approved "1")
-                              (disqus-id "disqus_identifier")
-                              (comment-status "open"))
-  (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-  (print-xml
-   `(rss ((version "2.0")
-          (xmlns:content "http://purl.org/rss/1.0/modules/content/")
-          (xmlns:dsq "http://www.disqus.com/")
-          (xmlns:dc "http://purl.org/dc/elements/1.1/")
-          (xmlns:wp "http://wordpress.org/export/1.0/"))
-         (channel
-          ()
-          (item
-           ()
-           (title () ,post-title)
-           (link () ,post-url)
-           (content:encoded () ,post-content)
-           (dsq:thread_identifier () ,disqus-id)
-           (wp:post_date_gmt () ,post-date)
-           (wp:comment_status () ,comment-status)
-
-           ;; loop here
-           (wp:comment
-            ()
-            (dsq:remote
-             ()
-             (dsq:id () ,disqus-user-id)
-             (dsq:avatar () ,disqus-avatar))
-            (wp:comment_id () ,comment-id)
-            (wp:comment_author () ,comment-author)
-            (wp:comment_author_email () ,comment-author-email)
-            (wp:comment_author_url () ,comment-author-url)
-            (wp:comment_author_IP () ,comment-author-ip)
-            (wp:comment_date_gmt () ,comment-date)
-            (wp:comment_content () ,comment-content)
-            (wp:comment_approved () ,comment-approved)
-            (wp:comment_parent () ,comment-parent-id))))))
-  (newline))
-
-;;; File dispatchers
-;; Non-Frog Scribble
+;;; Generic Scribble
 (define (xml-file->scribble-data file)
   (cond [(entry-file? file)
          (entry-file->scribble-data file)]
@@ -704,27 +652,31 @@
 
 (define (xml-file->scribble-file infile outfile)
   (prn1 "Converting ~a to ~a." infile outfile)
-  (let ([ifile (ensure-object-path infile)]
-        [ofile (ensure-object-path outfile)])
-    (with-output-to-file ofile
+  (let ([infile-path (ensure-object-path infile)]
+        [outfile-path (ensure-object-path outfile)])
+    (with-output-to-file outfile-path
       #:exists 'truncate/replace
       (λ ()
-        (xml-file->scribble-data ifile)))))
+        (xml-file->scribble-data infile-path)))))
 
 ;; Frog Markdown
 (define (xml-file->frog-markdown-file infile outfile)
-  (let ([ifile (ensure-object-path infile)]
-        [ofile (ensure-object-path outfile)])
-    (cond [(entry-file? ifile)
-           (entry-file->frog-markdown-file ifile ofile)]
-          ;; TODO: Since we're aiming to move the comments to Disqus,
-          ;; do we need to have this?
-          [(comment-file? ifile)
-           #t])))
+  (let ([infile-path (ensure-object-path infile)]
+        [outfile-path (ensure-object-path outfile)])
+    (cond [(entry-file? infile-path)
+           (entry-file->frog-markdown-file infile-path outfile-path)]
+          [else #f])))
 
+;;; TODO: Frog Scribble
+;;; The source XML files contain HTML formatting. If we plug them here
+;;; as is, it wouldn't work, because Scribble doesn't understand them,
+;;; unlike Markdown.
 (define (xml-file->frog-scribble-file infile outfile) #t)
 
+
+;;;-------------------------------------------------------------------
 ;;; Renderers
+
 (define (build-listof-parts files)
   (map (λ (file)
          (dynamic-require `(file ,file) 'doc))
@@ -761,37 +713,34 @@
              #:render-mixin pdf:render-mixin)]
     [else (error 'render-file "Unknown render type: ~a" type)])))
 
+
+;;;-------------------------------------------------------------------
 ;;; Top-level
+
 (define (main files)
   (for ([file files])
     (let ([scribble-file (suffix->scrbl file)]
           [render-type (current-render-type)]
           [frog-markdown-file (build-frog-markdown-path file)]
           [frog-scribble-file (build-frog-scribble-path file)]
-          [disqus-comment-file (build-disqus-comment-path file)])
+          [disqus-comment-file (build-disqus-comment-path)])
 
       (case render-type
         [(frog-markdown)
-         (xml-file->frog-markdown-file
-          file
-          frog-markdown-file)]
+         (xml-file->frog-markdown-file file frog-markdown-file)]
 
+        ;; Currently does nothing
         [(frog-scribble)
-         (xml-file->frog-scribble-file
-          file
-          frog-scribble-file)]
+         (xml-file->frog-scribble-file file frog-scribble-file)]
 
         [(disqus-comment)
-         ;; (xml-file->disqus-comment-file
-         ;;  file
-         ;;  disqus-comment-file)
-         #t]
+         (build-disqus-comment-file (current-directory) disqus-comment-file)]
 
         [(html markdown text latex pdf)
          ;; The Scribble file created here acts only as an intermediary
          ;; format, and that we're mostly interested at the end
          ;; formats like HTML. It is also important to note that the
-         ;; file created does not follow any specific format.
+         ;; files created do not follow a specific format.
          (xml-file->scribble-file file scribble-file)
 
          (when (and (file-exists? scribble-file)
@@ -812,12 +761,17 @@
    #:once-each
    [("--frog-markdown" "--fm")
     (""
-     "Render to Frog Markdown")
+     "Render to Frog Markdown.")
     (current-render-type 'frog-markdown)]
    [("--frog-scribble" "--fs")
     (""
-     "Render to Frog Scribble")
+     "Render to Frog Scribble.")
     (current-render-type 'frog-scribble)]
+
+   [("--disqus-comment" "--dc")
+    (""
+     "Build the Disqus XML comment file.")
+    (current-render-type 'disqus-comment)]
 
    [("--html")
     (""
