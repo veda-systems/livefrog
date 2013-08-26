@@ -26,6 +26,7 @@
 
 ;;;-------------------------------------------------------------------
 ;;; Contracts
+;;; TODO: Write more of these
 
 (provide
  (contract-out
@@ -492,11 +493,9 @@
        (dl ($ 'bold "Body:"))
        (dl ($ 'para body))])))
 
+
 ;;;-------------------------------------------------------------------
 ;;; Disqus stuff
-
-(define (build-disqus-comment-path)
-  (build-path "disqus-xml"))
 
 (define (print-xml xexpr)
   (write-xml/content (xexpr->xml xexpr)))
