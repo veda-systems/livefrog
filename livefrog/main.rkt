@@ -23,6 +23,10 @@
  (prefix-in latex:    scribble/latex-render)
  (prefix-in pdf:      scribble/pdf-render))
 
+
+;;;-------------------------------------------------------------------
+;;; Contracts
+
 (provide
  (contract-out
   [xml->xexp
@@ -43,10 +47,10 @@
   [comment-file-contents
    (->* ((or/c string? path?)) ()
         any/c)]
-  [xml-file->scribble-data
+  [xml-file->generic-scribble-data
    (->* ((and/c (or/c string? path?) file-exists?)) ()
         any/c)]
-  [xml-file->scribble-file
+  [xml-file->generic-scribble-file
    (->* ((and/c (or/c string? path?) file-exists?) string?) ()
         any)]
   [main
@@ -61,10 +65,9 @@
 (define current-render-type (make-parameter #f))
 (define current-disqus-file (make-parameter #f))
 
+
 ;;;-------------------------------------------------------------------
 ;;; Global definitions
-
-(define program-name "livefrog")
 
 (define scribble-suffix ".scrbl")
 (define markdown-suffix ".md")
@@ -226,10 +229,10 @@
             (substring s 0 (- (string-length s) 2))
             s))))
 
-;;; Bruce force hack to replace the &...; symbols in the HTML files
-;;; because I don't know how to inject arbitrary literal HTML code
-;;; for the HTML output. See notes in procedure
-;;; `entry-file->scribble-data`
+;;; A bruce force hack to replace the &...; symbols in the HTML
+;;; files because I don't know how to inject arbitrary literal HTML
+;;; code for the HTML output. See notes in procedure
+;;; `entry-file->generic-scribble-data`
 (define (replace-symbols str table)
   (let loop ([keys (hash-keys table)]
              [acc str])
@@ -370,7 +373,7 @@
 ;;; Data formatters
 
 ;;; Entry file to generic Scribble data
-(define (entry-file->scribble-data file)
+(define (entry-file->generic-scribble-data file)
   (let ([item (entry-file-contents file)])
     (dl scribble-base-header)
     (match item
@@ -462,11 +465,32 @@
 
 (define/out->file entry-file->frog-markdown)
 
-;;; Entry file to Frog Scribble data
-;;; TODO
+;;; TODO: Entry file to Frog Scribble data
 (define (entry-file->frog-scribble-data file) #t)
 (define/out->file entry-file->frog-scribble)
 
+;;; Comment files
+(define (comment-file->generic-scribble-data file)
+  (dl scribble-base-header)
+  (dl scribble-base-header)
+  (dl ($ 'title "Comments"))
+  (for ([item (comment-file-contents file)])
+    (match item
+      [(list id
+             parent-id
+             state
+             date
+             user
+             subject
+             body)
+       (dl ($ 'section subject))
+       (dl ($ 'bold "Subject:") subject)
+       (dl ($ 'bold "ID:") id)
+       (dl ($ 'bold "Parent ID:") parent-id)
+       (dl ($ 'bold "State:") state)
+       (dl ($ 'bold "Date:") date)
+       (dl ($ 'bold "Body:"))
+       (dl ($ 'para body))])))
 
 ;;;-------------------------------------------------------------------
 ;;; Disqus stuff
@@ -608,56 +632,15 @@
              [title (make-title-string subject)])
          (string-append date "-" title))])))
 
-;;; Trivial helpers for setting up the destination filename for Frog
-;;; writers
 (define (build-frog-markdown-path file)
   (build-path (string-append (make-title file) markdown-suffix)))
 
 (define (build-frog-scribble-path file)
   (build-path (string-append (make-title file) scribble-suffix)))
 
-;;; Comment files
-(define (comment-file->scribble-data file)
-  (dl scribble-base-header)
-  (dl scribble-base-header)
-  (dl ($ 'title "Comments"))
-  (for ([item (comment-file-contents file)])
-    (match item
-      [(list id
-             parent-id
-             state
-             date
-             user
-             subject
-             body)
-       (dl ($ 'section subject))
-       (dl ($ 'bold "Subject:") subject)
-       (dl ($ 'bold "ID:") id)
-       (dl ($ 'bold "Parent ID:") parent-id)
-       (dl ($ 'bold "State:") state)
-       (dl ($ 'bold "Date:") date)
-       (dl ($ 'bold "Body:"))
-       (dl ($ 'para body))])))
-
 
 ;;;-------------------------------------------------------------------
-;;; File creators
-
-;;; Generic Scribble
-(define (xml-file->scribble-data file)
-  (cond [(entry-file? file)
-         (entry-file->scribble-data file)]
-        [(comment-file? file)
-         (comment-file->scribble-data file)]))
-
-(define (xml-file->scribble-file infile outfile)
-  (prn1 "Converting ~a to ~a." infile outfile)
-  (let ([infile-path (ensure-object-path infile)]
-        [outfile-path (ensure-object-path outfile)])
-    (with-output-to-file outfile-path
-      #:exists 'truncate/replace
-      (λ ()
-        (xml-file->scribble-data infile-path)))))
+;;; File writers
 
 ;; Frog Markdown
 (define (xml-file->frog-markdown-file infile outfile)
@@ -677,6 +660,22 @@
     (cond [(entry-file? infile-path)
            (entry-file->frog-scribble-file infile-path outfile-path)]
           [else #f])))
+
+;;; Generic Scribble
+(define (xml-file->generic-scribble-data file)
+  (cond [(entry-file? file)
+         (entry-file->generic-scribble-data file)]
+        [(comment-file? file)
+         (comment-file->generic-scribble-data file)]))
+
+(define (xml-file->generic-scribble-file infile outfile)
+  (prn1 "Converting ~a to ~a." infile outfile)
+  (let ([infile-path (ensure-object-path infile)]
+        [outfile-path (ensure-object-path outfile)])
+    (with-output-to-file outfile-path
+      #:exists 'truncate/replace
+      (λ ()
+        (xml-file->generic-scribble-data infile-path)))))
 
 
 ;;;-------------------------------------------------------------------
@@ -729,79 +728,52 @@
        (build-disqus-comment-file (current-directory) (current-disqus-file))]
       [else
        (for ([file files])
-         (let ([scribble-file (suffix->scrbl file)]
-               [disqus-comment-file (build-disqus-comment-path)])
+         (let ([scribble-file (suffix->scrbl file)])
            (case render-type
-             [(frog-markdown frog-scribble)
-              (case render-type
-                [(frog-markdown)
-                 (xml-file->frog-markdown-file file (build-frog-markdown-path file))]
-                [(frog-scribble)
-                 (xml-file->frog-scribble-file file (build-frog-scribble-path file))])]
+             [(frog-markdown)
+              (xml-file->frog-markdown-file file (build-frog-markdown-path file))]
 
-             [(scribble scrbl)
-              (xml-file->scribble-file file scribble-file)]
+             [(frog-scribble)
+              (xml-file->frog-scribble-file file (build-frog-scribble-path file))]
+
+             [(generic-scribble)
+              (xml-file->generic-scribble-file file scribble-file)]
 
              [(html markdown text latex pdf)
               ;; The Scribble file created here acts only as an intermediary
               ;; format, and that we're mostly interested at the end
               ;; formats like HTML. It is also important to note that the
               ;; files created do not follow a specific format.
-              (xml-file->scribble-file file scribble-file)
-
+              (xml-file->generic-scribble-file file scribble-file)
               (when (and (file-exists? scribble-file)
                          render-type)
                 (render-file render-type scribble-file))
-
               (post-process file)]
 
              [else #f])))])))
 
 (module+ main
   (command-line
-   #:program program-name
-
    #:once-each
-   [("--frog-markdown" "--fm")
+   [("--markdown" "--frog-markdown")
     (""
      "Render to Frog Markdown output.")
     (current-render-type 'frog-markdown)]
-   [("--frog-scribble" "--fs")
+   [("--scribble" "--frog-scribble")
     (""
      "Render to Frog Scribble output.")
     (current-render-type 'frog-scribble)]
-
-   [("--disqus-file" "--disqus" "--dq")
+   [("--disqus")
     disqus-file
     (""
      "Build the Disqus XML comment file.")
     (current-disqus-file disqus-file)
     (current-render-type 'disqus-comment)]
 
-   [("--scribble")
+   [("--generic-scribble" "--plain-scribble")
     (""
      "Render to Scribble output.")
-    (current-render-type 'scribble)]
-   [("--html")
-    (""
-     "Render to HTML output.")
-    (current-render-type 'html)]
-   [("--markdown")
-    (""
-     "Render to Markdown output.")
-    (current-render-type 'markdown)]
-   [("--text")
-    (""
-    "Render to plain text output.")
-    (current-render-type 'text)]
-   [("--latex")
-    (""
-    "Render to LaTeX output.")
-    (current-render-type 'latex)]
-   [("--pdf")
-    (""
-    "Render to PDF output.")
-    (current-render-type 'pdf)]
+    (current-render-type 'generic-scribble)]
 
    #:once-any
    [("-v" "--verbose")
