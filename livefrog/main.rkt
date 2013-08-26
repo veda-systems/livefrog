@@ -671,7 +671,12 @@
 ;;; The source XML files contain HTML formatting. If we plug them here
 ;;; as is, it wouldn't work, because Scribble doesn't understand them,
 ;;; unlike Markdown.
-(define (xml-file->frog-scribble-file infile outfile) #t)
+(define (xml-file->frog-scribble-file infile outfile)
+  (let ([infile-path (ensure-object-path infile)]
+        [outfile-path (ensure-object-path outfile)])
+    (cond [(entry-file? infile-path)
+           (entry-file->frog-scribble-file infile-path outfile-path)]
+          [else #f])))
 
 
 ;;;-------------------------------------------------------------------
@@ -734,6 +739,9 @@
                 [(frog-scribble)
                  (xml-file->frog-scribble-file file (build-frog-scribble-path file))])]
 
+             [(scribble scrbl)
+              (xml-file->scribble-file file scribble-file)]
+
              [(html markdown text latex pdf)
               ;; The Scribble file created here acts only as an intermediary
               ;; format, and that we're mostly interested at the end
@@ -770,25 +778,29 @@
     (current-disqus-file disqus-file)
     (current-render-type 'disqus-comment)]
 
+   [("--scribble")
+    (""
+     "Render to Scribble output.")
+    (current-render-type 'scribble)]
    [("--html")
     (""
-     "Render HTML files.")
+     "Render to HTML output.")
     (current-render-type 'html)]
    [("--markdown")
     (""
-     "Render Markdown files.")
+     "Render to Markdown output.")
     (current-render-type 'markdown)]
    [("--text")
     (""
-    "Render Text files.")
+    "Render to plain text output.")
     (current-render-type 'text)]
    [("--latex")
     (""
-    "Render LaTeX files.")
+    "Render to LaTeX output.")
     (current-render-type 'latex)]
    [("--pdf")
     (""
-    "Render PDF files.")
+    "Render to PDF output.")
     (current-render-type 'pdf)]
 
    #:once-any

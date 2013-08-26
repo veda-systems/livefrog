@@ -2,12 +2,8 @@
 
 __Livefrog__ is a [Racket](http://racket-lang.org) program, used to
 convert the XML files created by
-[ljdump](https://github.com/ghewgill/ljdump), or
-[ljmigrate](https://github.com/ceejbot/ljmigrate), to
-[Scribble](http://docs.racket-lang.org/scribble/), and the output
-formats that Scribble supports. Input files are categorized as either
-*entry*, or *comment* data, referring to the posts created by the
-owner of the journal, and comments by journal viewers, respectively.
+[ljdump](https://github.com/ghewgill/ljdump), for
+[Frog](https://github.com/greghendershott/frog/) usage.
 
 
 # Installation
@@ -33,34 +29,56 @@ installing from local directories. Without it, it will try to fetch
 the sources from the internet.
 
 
-# Usage
+# Frog Usage
 
-To convert the file named `file.xml` to `file.scrbl`:
+This sections contains instructions for creating files suitable for
+use with Frog.
 
-```
-raco livefrog file.xml
-```
-
-Like above, but in addition to generating `file.scrbl`, render it to
-`file.html` as well, as if by running `scribble --html file.scrbl`.
+To create a Markdown file from the file L-10;
 
 ```
-raco livefrog --html file.xml
+raco livefrog --frog-markdown L-10
 ```
 
-Again, like above, but in addition to generating `file.scrbl`, render
-it to `file.md` as well, as if by running `scribble --markdown
-file.scrbl`.
+To create a file named `disqus.xml` that will be used for importing
+comments with Disqus:
 
 ```
-raco livefrog --markdown file.xml
+raco livefrog --disqus disqus.xml
+```
+
+
+# Generic Usage
+
+This section contains instructions for creating files, without a
+specific format, using Scribble as an intermediary format.
+
+To convert the file named `L-10` to `L-10.scrbl`:
+
+```
+raco livefrog L-10
+```
+
+Like above, but in addition to generating `L-10.scrbl`, render it to
+`L-10.html` as well, as if by running `scribble --html L-10.scrbl`.
+
+```
+raco livefrog --html L-10
+```
+
+Again, like above, but in addition to generating `L-10.scrbl`, render
+it to `L-10.md` as well, as if by running `scribble --markdown
+L-10.scrbl`.
+
+```
+raco livefrog --markdown L-10
 ```
 
 
 To display the list of available command line options and switches.
 
 ```
-raco livefrog -h
+raco livefrog --help
 ```
 
 
@@ -107,6 +125,5 @@ your shell.
 
 # Todo
 
-0. Enable [Frog](https://github.com/greghendershott/frog) markdown output.
 0. Create tests.
 0. Enable HTML inlining.
