@@ -560,7 +560,7 @@
                             ;; Should I use the "new" URL from the new blog location instead?
                             (link () ,url)
                             (content:encoded () ,(string-append "<![CDATA[content]]>"))
-                            (dsq:thread_identifier () "disqus-id")
+                            (dsq:thread_identifier () "disqus_identifier")
                             (wp:post_date_gmt () ,log-time)
                             (wp:comment_status () "open")
 
@@ -578,9 +578,10 @@
                                      (dsq:remote
                                       ()
                                       (dsq:id () "disqus-user-id")
-                                      (dsq:avatar () "http://url.to/avatar.png"))
+                                      (dsq:avatar () "http://www.arayaclean.com/images/default-avatar.png"))
                                      (wp:comment_id () ,id)
                                      (wp:coment_author () ,user)
+                                     (wp:comment_author_url () "http://foo.bar.baz")
 
                                      ;; The Disqus spec at http://help.disqus.com/customer/portal/articles/472150
                                      ;; says that this field has to be unique to each user, or else comments
