@@ -65,6 +65,7 @@
 (define current-verbosity (make-parameter 0))
 (define current-render-type (make-parameter #f))
 (define current-disqus-file (make-parameter #f))
+(define current-site (make-parameter #f))
 
 
 ;;;-------------------------------------------------------------------
@@ -513,6 +514,83 @@
                   (list l-num c-num)
                   '())))))
 
+(define (build-disqus-comment-head path-pairs)
+  (for/list ([path-pair path-pairs])
+    (match path-pair
+      [(list entry-file comment-file)
+       (let ([entry-item (entry-file-contents entry-file)]
+             [comment-item (comment-file-contents comment-file)])
+         (match entry-item
+           [(list item-id
+                  event-time
+                  url
+                  d-item-id
+                  event-timestamp
+                  reply-count
+                  log-time
+                  opt-preformatted
+                  personifi-tags
+                  has_screened
+                  comment-alter
+                  rev-time
+                  opt-backdated
+                  current-mood-id
+                  current-music
+                  rev-num
+                  can-comment
+                  a-num
+                  subject
+                  body
+                  tag-list)
+            (let ([date-string (iso-8601-date log-time)])
+              `(item
+                ()
+                (title () ,subject)
+
+                ;; TODO: Find a way to plug in the URL from the new blog
+
+                ;; e.g.,n
+                ;; Map http://fare.livejournal.com/567.html to
+                ;; http://fare.meta.ph/blog/2003/07/24/looking-for-a-translator-a-la-recherche-d-un-traducteur/
+
+                ;; (link () ,url)
+                (link () ,(build-location entry-file (current-site)))
+
+                (content:encoded () ,(string-append "<![CDATA[content]]>"))
+                (dsq:thread_identifier () "disqus_identifier")
+                (wp:post_date_gmt () ,log-time)
+                (wp:comment_status () "open")
+
+                ,@(build-disqus-comment-body comment-item date-string)))]))])))
+
+(define (build-disqus-comment-body comment date-string)
+  (for/list ([c-item comment])
+    (match c-item
+      [(list id
+             parent-id
+             state
+             date
+             user
+             subject
+             body)
+       `(wp:comment
+         ()
+         (dsq:remote
+          ()
+          (dsq:id () "disqus-id")
+          (dsq:avatar () "http://www.arayaclean.com/images/default-avatar.png"))
+         (wp:comment_id () ,id)
+         (wp:coment_author () ,user)
+         (wp:comment_author_url () "http://foo.bar.baz")
+         (wp:comment_author_email
+          ()
+          ,(string-append (string-replace user " " "_") "@domain.com"))
+         (wp:comment_author_IP () "127.0.0.1")
+         (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
+         (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
+         (wp:comment_approved () "1")
+         (wp:comment_parent () ,parent-id))])))
+
 (define (build-disqus-comment-data (directory (current-directory)))
   (let ([path-pairs (build-entry-comment-pairs directory)])
     (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
@@ -524,78 +602,7 @@
             (xmlns:wp "http://wordpress.org/export/1.0/"))
            (channel
             ()
-            ,@(for/list ([path-pair path-pairs])
-                (match path-pair
-                  [(list entry-file comment-file)
-                   (let ([entry-item (entry-file-contents entry-file)]
-                         [comment-item (comment-file-contents comment-file)])
-                     (match entry-item
-                       [(list item-id
-                              event-time
-                              url
-                              d-item-id
-                              event-timestamp
-                              reply-count
-                              log-time
-                              opt-preformatted
-                              personifi-tags
-                              has_screened
-                              comment-alter
-                              rev-time
-                              opt-backdated
-                              current-mood-id
-                              current-music
-                              rev-num
-                              can-comment
-                              a-num
-                              subject
-                              body
-                              tag-list)
-                        (let ([date-string (iso-8601-date log-time)])
-                          `(item
-                            ()
-                            (title () ,subject)
-
-                            ;; TODO: Will this match with the Disqus data?
-                            ;; Should I use the "new" URL from the new blog location instead?
-                            (link () ,url)
-                            (content:encoded () ,(string-append "<![CDATA[content]]>"))
-                            (dsq:thread_identifier () "disqus_identifier")
-                            (wp:post_date_gmt () ,log-time)
-                            (wp:comment_status () "open")
-
-                            ,@(for/list ([c-item comment-item])
-                                (match c-item
-                                  [(list id
-                                         parent-id
-                                         state
-                                         date
-                                         user
-                                         subject
-                                         body)
-                                   `(wp:comment
-                                     ()
-                                     (dsq:remote
-                                      ()
-                                      (dsq:id () "disqus-user-id")
-                                      (dsq:avatar () "http://www.arayaclean.com/images/default-avatar.png"))
-                                     (wp:comment_id () ,id)
-                                     (wp:coment_author () ,user)
-                                     (wp:comment_author_url () "http://foo.bar.baz")
-
-                                     ;; The Disqus spec at http://help.disqus.com/customer/portal/articles/472150
-                                     ;; says that this field has to be unique to each user, or else comments
-                                     ;; would appear as if they came from a single user
-                                     (wp:comment_author_email
-                                      ()
-                                      ,(string-append
-                                        (string-replace user " " "_")
-                                        "@domain.com"))
-                                     (wp:comment_author_IP () "127.0.0.1")
-                                     (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
-                                     (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
-                                     (wp:comment_approved () "1")
-                                     (wp:comment_parent () ,parent-id))]))))]))])))))))
+            ,@(build-disqus-comment-head path-pairs))))))
 
 (define (build-disqus-comment-file directory output-file)
   (with-output-to-file output-file
@@ -604,7 +611,7 @@
       (build-disqus-comment-data directory)))
   (replace-symbols-file output-file symbol-table))
 
-(define (make-title file)
+(define (build-location file (site #f) (ssl #f))
   (let ([item (entry-file-contents file)])
     (match item
       [(list item-id
@@ -628,15 +635,24 @@
              subject
              body
              tag-list)
-       (let ([date (car (string-split log-time))]
+       (let ([time (car (string-split log-time))]
              [title (make-title-string subject)])
-         (string-append date "-" title))])))
+         (cond [site (string-append
+                      "http://" site "/blog/"
+                      (string-replace time "-" "/")
+                      "/"
+                      title
+                      "/")]
+               [else (string-append
+                      time
+                      "-"
+                      title)]))])))
 
 (define (build-frog-markdown-path file)
-  (build-path (string-append (make-title file) markdown-suffix)))
+  (build-path (string-append (build-location file) markdown-suffix)))
 
 (define (build-frog-scribble-path file)
-  (build-path (string-append (make-title file) scribble-suffix)))
+  (build-path (string-append (build-location file) scribble-suffix)))
 
 
 ;;;-------------------------------------------------------------------
@@ -725,7 +741,8 @@
   (let ([render-type (current-render-type)])
     (case render-type
       [(disqus-comment)
-       (build-disqus-comment-file (current-directory) (current-disqus-file))]
+       (and (current-site)
+            (build-disqus-comment-file (current-directory) (current-disqus-file)))]
       [else
        (for ([file files])
          (let ([scribble-file (suffix->scrbl file)])
@@ -763,6 +780,12 @@
     (""
      "Render to Frog Scribble output.")
     (current-render-type 'frog-scribble)]
+
+   [("--site")
+    site
+    (""
+     "Specify the base site to use in the comments, e.g., foo.bar.com.")
+    (current-site site)]
    [("--disqus")
     disqus-file
     (""
