@@ -794,7 +794,7 @@
 
    [("--generic-scribble" "--plain-scribble")
     (""
-     "Render to Scribble output.")
+     "Render to generic Scribble output.")
     (current-render-type 'generic-scribble)]
 
    #:once-any
