@@ -780,15 +780,15 @@
      "Render to Frog Scribble output.")
     (current-render-type 'frog-scribble)]
 
-   [("--site")
+   [("--site" "--root" "--root-site")
     site
     (""
-     "Specify the base site to use in the comments, e.g., foo.bar.com.")
+     "Specify the root site to use.")
     (current-site site)]
-   [("--disqus")
+   [("--disqus" "--disqus-file")
     disqus-file
     (""
-     "Build the Disqus XML comment file.")
+     "Specify the output Disqus XML import file.")
     (current-disqus-file disqus-file)
     (current-render-type 'disqus-comment)]
 
