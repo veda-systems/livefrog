@@ -546,10 +546,9 @@
               `(item
                 ()
                 (title () ,subject)
-
                 (link () ,(build-location entry-file (current-site)))
-
-                (content:encoded () ,(string-append "<![CDATA[content]]>"))
+                ;; (content:encoded () "<![CDATA[content]]>")
+                (content:encoded () ,(string-append "<![CDATA[" body "]]>"))
                 (dsq:thread_identifier () "disqus_identifier")
                 (wp:post_date_gmt () ,log-time)
                 (wp:comment_status () "open")
@@ -574,10 +573,6 @@
                body)
          `(wp:comment
            ()
-           (dsq:remote
-            ()
-            (dsq:id () ,default-disqus-id)
-            (dsq:avatar () ,default-avatar))
            (wp:comment_id () ,id)
            (wp:comment_author () ,user)
            (wp:comment_author_url () ,default-url)
@@ -586,9 +581,19 @@
             ,(string-append (string-replace user " " "_") default-address))
            (wp:comment_author_IP () ,default-ip-address)
            (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
-           (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
+           (wp:comment_content
+            ()
+            ,(string-append "<![CDATA["
+                            (if (< (string-length body) 3)
+                                "..."
+                                body)
+                            "]]>"))
            (wp:comment_approved () ,default-approval)
-           (wp:comment_parent () ,parent-id))]))))
+           (wp:comment_parent
+            ()
+            ,(if (= (string-length parent-id) 0)
+                 "0"
+                 parent-id)))]))))
 
 (define (build-disqus-comment-data (directory (current-directory)))
   (let ([path-pairs (build-entry-comment-pairs directory)])
@@ -641,7 +646,8 @@
                       (string-replace time "-" "/")
                       "/"
                       title
-                      "/")]
+                      ;; "/"
+                      )]
                [else (string-append
                       time
                       "-"
