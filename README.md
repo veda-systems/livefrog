@@ -29,7 +29,7 @@ installing from local directories. Without it, it will try to fetch
 the sources from the internet.
 
 
-# Frog Usage
+# Usage
 
 This sections contains instructions for creating files suitable for
 use with Frog.
@@ -37,43 +37,21 @@ use with Frog.
 To create a Markdown file from the file L-10;
 
 ```
-raco livefrog --frog-markdown L-10
-```
-
-To create a file named `disqus.xml` that will be used for importing
-comments with Disqus:
-
-```
-raco livefrog --disqus disqus.xml
-```
-
-
-# Generic Usage
-
-This section contains instructions for creating files, without a
-specific format, using Scribble as an intermediary format.
-
-To convert the file named `L-10` to `L-10.scrbl`:
-
-```
-raco livefrog L-10
-```
-
-Like above, but in addition to generating `L-10.scrbl`, render it to
-`L-10.html` as well, as if by running `scribble --html L-10.scrbl`.
-
-```
-raco livefrog --html L-10
-```
-
-Again, like above, but in addition to generating `L-10.scrbl`, render
-it to `L-10.md` as well, as if by running `scribble --markdown
-L-10.scrbl`.
-
-```
 raco livefrog --markdown L-10
 ```
 
+To create a file named `disqus.xml` that will be used for importing
+comments with Disqus, using `foo.bar.com` as the root site:
+
+```
+raco livefrog --site foo.bar.com --disqus disqus.xml
+```
+
+To create a "generic" Scribble (one that is free-form):
+
+```
+raco livefrog --generic-scribble L-10
+```
 
 To display the list of available command line options and switches.
 
