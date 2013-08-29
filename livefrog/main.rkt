@@ -547,13 +547,6 @@
                 ()
                 (title () ,subject)
 
-                ;; TODO: Find a way to plug in the URL from the new blog
-
-                ;; e.g.,n
-                ;; Map http://fare.livejournal.com/567.html to
-                ;; http://fare.meta.ph/blog/2003/07/24/looking-for-a-translator-a-la-recherche-d-un-traducteur/
-
-                ;; (link () ,url)
                 (link () ,(build-location entry-file (current-site)))
 
                 (content:encoded () ,(string-append "<![CDATA[content]]>"))
@@ -563,33 +556,39 @@
 
                 ,@(build-disqus-comment-body comment-item date-string)))]))])))
 
-(define (build-disqus-comment-body comment date-string)
-  (for/list ([c-item comment])
-    (match c-item
-      [(list id
-             parent-id
-             state
-             date
-             user
-             subject
-             body)
-       `(wp:comment
-         ()
-         (dsq:remote
-          ()
-          (dsq:id () "disqus-id")
-          (dsq:avatar () "http://www.arayaclean.com/images/default-avatar.png"))
-         (wp:comment_id () ,id)
-         (wp:coment_author () ,user)
-         (wp:comment_author_url () "http://foo.bar.baz")
-         (wp:comment_author_email
-          ()
-          ,(string-append (string-replace user " " "_") "@domain.com"))
-         (wp:comment_author_IP () "127.0.0.1")
-         (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
-         (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
-         (wp:comment_approved () "1")
-         (wp:comment_parent () ,parent-id))])))
+(define (build-disqus-comment-body comment-item date-string)
+  (let ([default-disqus-id "disqusid"]
+        [default-avatar "http://www.arayaclean.com/images/default-avatar.png"]
+        [default-url "http://foo.bar.baz"]
+        [default-address "@domain.com"]
+        [default-ip-address "127.0.0.1"]
+        [default-approval "1"])
+    (for/list ([comment comment-item])
+      (match comment
+        [(list id
+               parent-id
+               state
+               date
+               user
+               subject
+               body)
+         `(wp:comment
+           ()
+           (dsq:remote
+            ()
+            (dsq:id () ,default-disqus-id)
+            (dsq:avatar () ,default-avatar))
+           (wp:comment_id () ,id)
+           (wp:coment_author () ,user)
+           (wp:comment_author_url () ,default-url)
+           (wp:comment_author_email
+            ()
+            ,(string-append (string-replace user " " "_") default-address))
+           (wp:comment_author_IP () ,default-ip-address)
+           (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
+           (wp:comment_content () ,(string-append "<![CDATA[" body "]]>"))
+           (wp:comment_approved () ,default-approval)
+           (wp:comment_parent () ,parent-id))]))))
 
 (define (build-disqus-comment-data (directory (current-directory)))
   (let ([path-pairs (build-entry-comment-pairs directory)])
