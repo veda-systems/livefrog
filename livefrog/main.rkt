@@ -579,7 +579,7 @@
             (dsq:id () ,default-disqus-id)
             (dsq:avatar () ,default-avatar))
            (wp:comment_id () ,id)
-           (wp:coment_author () ,user)
+           (wp:comment_author () ,user)
            (wp:comment_author_url () ,default-url)
            (wp:comment_author_email
             ()
