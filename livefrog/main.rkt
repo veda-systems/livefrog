@@ -21,7 +21,8 @@
  (prefix-in markdown: scribble/markdown-render)
  (prefix-in html:     scribble/html-render)
  (prefix-in latex:    scribble/latex-render)
- (prefix-in pdf:      scribble/pdf-render))
+ (prefix-in pdf:      scribble/pdf-render)
+ frog/util)
 
 
 ;;;-------------------------------------------------------------------
@@ -222,10 +223,19 @@
 (define (normalize-string str)
   ((apply compose string-normalizers) str))
 
+;; (define (make-title-string str)
+;;   (if (= (string-length str) 0)
+;;       "title"
+;;       (let* ([s (string-truncate (normalize-string str))]
+;;              [end (string-ref s (- (string-length s) 1))])
+;;         (if (char=? end #\-)
+;;             (substring s 0 (- (string-length s) 2))
+;;             s))))
+
 (define (make-title-string str)
   (if (= (string-length str) 0)
       "title"
-      (let* ([s (string-truncate (normalize-string str))]
+      (let* ([s (string-downcase (our-encode str))]
              [end (string-ref s (- (string-length s) 1))])
         (if (char=? end #\-)
             (substring s 0 (- (string-length s) 2))
@@ -501,6 +511,9 @@
 (define (print-xml xexpr)
   (write-xml/content (xexpr->xml xexpr)))
 
+(define (cdata-text text)
+  (string-append "<![CDATA[" text "]]>"))
+
 (define (build-entry-comment-pairs (directory "."))
   (filter (λ (x)
             (not (empty? x)))
@@ -547,12 +560,11 @@
                 ()
                 (title () ,subject)
                 (link () ,(build-location entry-file (current-site)))
-                ;; (content:encoded () "<![CDATA[content]]>")
-                (content:encoded () ,(string-append "<![CDATA[" body "]]>"))
-                (dsq:thread_identifier () "disqus_identifier")
+                (content:encoded () "<![CDATA[content]]>")
+                ;; (content:encoded () ,(cdata-text body))
+                (dsq:thread_identifier () ,(build-location entry-file))
                 (wp:post_date_gmt () ,log-time)
                 (wp:comment_status () "open")
-
                 ,@(build-disqus-comment-body comment-item date-string)))]))])))
 
 (define (build-disqus-comment-body comment-item date-string)
@@ -583,11 +595,7 @@
            (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
            (wp:comment_content
             ()
-            ,(string-append "<![CDATA["
-                            (if (< (string-length body) 3)
-                                "..."
-                                body)
-                            "]]>"))
+            ,(cdata-text (if (< (string-length body) 3) "..." body)))
            (wp:comment_approved () ,default-approval)
            (wp:comment_parent
             ()
@@ -646,8 +654,7 @@
                       (string-replace time "-" "/")
                       "/"
                       title
-                      ;; "/"
-                      )]
+                      "/")]
                [else (string-append
                       time
                       "-"
