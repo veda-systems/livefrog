@@ -1,3 +1,3 @@
 #lang setup/infotab
-(define version "0.9")
+(define version "1.0")
 (define deps '("sxml" "frog"))
