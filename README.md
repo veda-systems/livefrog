@@ -40,11 +40,12 @@ To create a Markdown file from the file L-10;
 raco livefrog --markdown L-10
 ```
 
-To create a file named `disqus.xml` that will be used for importing
-comments with Disqus, using `foo.bar.com` as the root site:
+To create a file, named `comments.xml` that will be used for importing
+comments, at [http://import.disqus.com/](http://import.disqus.com/),
+using `foo.bar.com` as the root site:
 
 ```
-raco livefrog --site foo.bar.com --disqus disqus.xml
+raco livefrog --site foo.bar.com --disqus comments.xml
 ```
 
 To create a "generic" Scribble (one that is free-form):
