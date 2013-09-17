@@ -34,10 +34,17 @@ the sources from the internet.
 This sections contains instructions for creating files suitable for
 use with Frog.
 
-To create a Markdown file from the file L-10;
+To create a Markdown file from the file L-10:
 
 ```
 raco livefrog --markdown L-10
+```
+
+To automatically "pick up" the files created by ljdump (the ones that
+prefixed with L-):
+
+```
+raco livefrog --auto --markdown
 ```
 
 To create a file, named `comments.xml` that will be used for importing

@@ -67,6 +67,7 @@
 (define current-render-type (make-parameter #f))
 (define current-disqus-file (make-parameter #f))
 (define current-site (make-parameter #f))
+(define auto-mode (make-parameter #f))
 
 
 ;;;-------------------------------------------------------------------
@@ -750,13 +751,17 @@
 ;;; Top-level
 
 (define (main files)
-  (let ([render-type (current-render-type)])
+  (let ([render-type (current-render-type)]
+        [input-files (if (auto-mode)
+                         (append (ljdump-entry-files (current-directory))
+                                 files)
+                         files)])
     (case render-type
       [(disqus-comment)
        (and (current-site)
             (build-disqus-comment-file (current-directory) (current-disqus-file)))]
       [else
-       (for ([file files])
+       (for ([file input-files])
          (let ([scribble-file (suffix->scrbl file)])
            (case render-type
              [(frog-markdown)
@@ -809,6 +814,11 @@
     (""
      "Render to generic Scribble output.")
     (current-render-type 'generic-scribble)]
+
+   [("--auto" "--auto-mode")
+    (""
+     "Pick up ljdump files automatically.")
+    (auto-mode #t)]
 
    #:once-any
    [("-v" "--verbose")
