@@ -224,15 +224,6 @@
 (define (normalize-string str)
   ((apply compose string-normalizers) str))
 
-;; (define (make-title-string str)
-;;   (if (= (string-length str) 0)
-;;       "title"
-;;       (let* ([s (string-truncate (normalize-string str))]
-;;              [end (string-ref s (- (string-length s) 1))])
-;;         (if (char=? end #\-)
-;;             (substring s 0 (- (string-length s) 2))
-;;             s))))
-
 (define (make-title-string str)
   (if (= (string-length str) 0)
       "title"
@@ -835,6 +826,5 @@
    ;; #:args (file . another-file)
    ;; (let ([files (cons file another-file)])
    ;;   (main files))
-
    #:args files
    (main files)))
