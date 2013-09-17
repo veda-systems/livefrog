@@ -99,9 +99,3 @@ echo 'alias livefrog raco livefrog' >> ~/.cshrc
 
 Replace `.bashrc`, and `.cshrc`, with the appropriate init file for
 your shell.
-
-
-# Todo
-
-0. Create tests.
-0. Enable HTML inlining.
