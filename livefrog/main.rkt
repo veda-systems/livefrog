@@ -600,8 +600,7 @@
               `(item
                 ()
                 (title () ,subject)
-                (link () ,(build-location entry-file (string-append "http://" (current-site)
-                                                                    "/")))
+                (link () ,(build-location entry-file (string-append "http://" (current-site) "/")))
                 (content:encoded () "<![CDATA[content]]>")
                 ;; (content:encoded () ,(cdata-text body))
                 (dsq:thread_identifier () ,(build-location entry-file))
