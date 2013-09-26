@@ -3,7 +3,8 @@
 __Livefrog__ is a [Racket](http://racket-lang.org) program, used to
 convert the XML files created by
 [ljdump](https://github.com/ghewgill/ljdump), for
-[Frog](https://github.com/greghendershott/frog/) usage.
+[Frog](https://github.com/greghendershott/frog/) usage. It is a tool
+used to migrate from LiveJournal to a Frog-powered blogging platform.
 
 
 # Installation

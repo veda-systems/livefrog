@@ -131,11 +131,12 @@
 ;;;-------------------------------------------------------------------
 ;;; String printers
 
-(define (dl0 . rst)
+(define (dl . rst)
   (displayln (apply string-append rst)))
 
-(define (dl . rst)
-  (displayln (string-join rst))
+(define (dln . rst)
+  ;; (displayln (string-join rst))
+  (displayln (apply string-append rst))
   (newline))
 
 
@@ -299,6 +300,25 @@
        #'(define (name/file infile outfile)
            (out->file name/data infile outfile)))]))
 
+(define (comment-file-exists? file)
+  #f)
+
+(define (entry-file->comment-file file)
+  (let ([path (ensure-string-path file)])
+    (ensure-object-path (regexp-replace "^L-" path "C-"))))
+
+(define (comment-count file)
+  (length (comment-file-contents file)))
+
+(define (entry-file-comment-count file)
+  (let ([path (entry-file->comment-file file)])
+    (if (file-exists? path)
+        (comment-count path)
+        0)))
+
+(define (ahref url text)
+  (string-append "<a href=\"" url "\">" text "</a>"))
+
 
 ;;;-------------------------------------------------------------------
 ;;; Entry data extractors
@@ -379,7 +399,7 @@
 ;;; Entry file to generic Scribble data
 (define (entry-file->generic-scribble-data file)
   (let ([item (entry-file-contents file)])
-    (dl scribble-base-header)
+    (dln scribble-base-header)
     (match item
       [(list item-id
              event-time
@@ -402,19 +422,19 @@
              subject
              body
              tag-list)
-       (dl ($ 'title subject))
-       (dl ($ 'bold "Item ID:") item-id)
-       (dl ($ 'bold "Event Time:") event-time)
-       (dl ($ 'bold "Event Timestamp:") event-timestamp)
-       (dl ($ 'bold "Revision time:") rev-time)
-       (dl ($ 'bold "Revision number:") rev-num)
-       (dl ($ 'bold "Log time:") log-time)
-       (dl ($ 'bold "Reply count:") reply-count)
-       (dl ($ 'bold "Current Mood:") current-mood-id)
-       (dl ($ 'bold "Current Music:") current-music)
-       (dl ($ 'bold "URL:") ($ 'url url))
-       (dl ($ 'bold "Tags:") tag-list)
-       (dl ($ 'bold "Body:"))
+       (dln ($ 'title subject))
+       (dln ($ 'bold "Item ID:") item-id)
+       (dln ($ 'bold "Event Time:") event-time)
+       (dln ($ 'bold "Event Timestamp:") event-timestamp)
+       (dln ($ 'bold "Revision time:") rev-time)
+       (dln ($ 'bold "Revision number:") rev-num)
+       (dln ($ 'bold "Log time:") log-time)
+       (dln ($ 'bold "Reply count:") reply-count)
+       (dln ($ 'bold "Current Mood:") current-mood-id)
+       (dln ($ 'bold "Current Music:") current-music)
+       (dln ($ 'bold "URL:") ($ 'url url))
+       (dln ($ 'bold "Tags:") tag-list)
+       (dln ($ 'bold "Body:"))
 
        ;; NOTE:
        ;; The following expression works quite well with the Markdown
@@ -431,11 +451,12 @@
        ;; it outside Javascript. So what we're doing now is we replace
        ;; all the &...; symbols found in the HTML document, as listed in
        ;; ./symbols.rkt
-       (dl ($ 'para body))])))
+       (dln ($ 'para body))])))
 
 ;;; Entry file to Frog Markdown data
 (define (entry-file->frog-markdown-data file)
-  (let ([item (entry-file-contents file)])
+  (let ([item (entry-file-contents file)]
+        [comment-count (entry-file-comment-count file)])
     (match item
       [(list item-id
              event-time
@@ -461,11 +482,39 @@
        ;; We'll use log-time since it seems to be the earliest of all
        ;; the dates available in the file
        (let ([date-string (iso-8601-date log-time)])
-         (dl0 "    Title: " subject)
-         (dl0 "    Date: " date-string)
-         (dl0 "    Tags: " tag-list)
+         (dl "    Title: " subject)
+         (dl "    Date: " date-string)
+         (dl "    Tags: " tag-list)
          (newline)
-         (dl0 body))])))
+
+         ;; (dln "<em>Original article: <a href=\"" url "\">" url "</a></em>")
+         (dln "<em>Original article: " (ahref url url) "</em>")
+
+         (dln body)
+
+         ;; NOTE: Everything that follows this comment, won't be present
+         ;; in future posts.
+
+         ;; NOTE: This won't be present in future posts, because this is
+         ;; static content. If a user comments on a migrated post, the HTML
+         ;; generated from this section will become obsolete. Therefore, to
+         ;; automatically update the number of comments present in a post,
+         ;; we must extract the number of comments by communicating with
+         ;; Disqus. AFAIK, as of 2013-09-26, Disqus doesn't have that. This
+         ;; can be viewed as a glaring hole of the decoupling of the entries,
+         ;; and the comments.
+         #|
+         (let ([count (number->string comment-count)]
+               [location (build-location file "/")])
+           (if (= comment-count 1)
+               (dln (ahref location (string-append count " comment")))
+               (dln (ahref location (string-append count " comments")))))
+         |#
+
+         ;; NOTE: This serves as a reminder that this text should be placed
+         ;; somewhere in the beginning of the body, but how exactly are we
+         ;; going to do that, is a big question.
+         (dl "<!-- more -->"))])))
 
 (define/out->file entry-file->frog-markdown)
 
@@ -475,9 +524,9 @@
 
 ;;; Comment files
 (define (comment-file->generic-scribble-data file)
-  (dl scribble-base-header)
-  (dl scribble-base-header)
-  (dl ($ 'title "Comments"))
+  (dln scribble-base-header)
+  (dln scribble-base-header)
+  (dln ($ 'title "Comments"))
   (for ([item (comment-file-contents file)])
     (match item
       [(list id
@@ -487,14 +536,14 @@
              user
              subject
              body)
-       (dl ($ 'section subject))
-       (dl ($ 'bold "Subject:") subject)
-       (dl ($ 'bold "ID:") id)
-       (dl ($ 'bold "Parent ID:") parent-id)
-       (dl ($ 'bold "State:") state)
-       (dl ($ 'bold "Date:") date)
-       (dl ($ 'bold "Body:"))
-       (dl ($ 'para body))])))
+       (dln ($ 'section subject))
+       (dln ($ 'bold "Subject:") subject)
+       (dln ($ 'bold "ID:") id)
+       (dln ($ 'bold "Parent ID:") parent-id)
+       (dln ($ 'bold "State:") state)
+       (dln ($ 'bold "Date:") date)
+       (dln ($ 'bold "Body:"))
+       (dln ($ 'para body))])))
 
 
 ;;;-------------------------------------------------------------------
@@ -551,7 +600,8 @@
               `(item
                 ()
                 (title () ,subject)
-                (link () ,(build-location entry-file (current-site)))
+                (link () ,(build-location entry-file (string-append "http://" (current-site)
+                                                                    "/")))
                 (content:encoded () "<![CDATA[content]]>")
                 ;; (content:encoded () ,(cdata-text body))
                 (dsq:thread_identifier () ,(build-location entry-file))
@@ -559,11 +609,16 @@
                 (wp:comment_status () "open")
                 ,@(build-disqus-comment-body comment-item date-string)))]))])))
 
+(define (default-text text)
+  (if (< (string-length text) 3)
+      "..."
+      text))
+
 (define (build-disqus-comment-body comment-item date-string)
   (let ([default-disqus-id "disqusid"]
-        [default-avatar "http://www.arayaclean.com/images/default-avatar.png"]
-        [default-url "http://foo.bar.baz"]
-        [default-address "@domain.com"]
+        [default-avatar "http://bar.baz/avatar.png"]
+        [default-url "http://bar.baz"]
+        [default-address "@bar.baz"]
         [default-ip-address "127.0.0.1"]
         [default-approval "1"])
     (for/list ([comment comment-item])
@@ -587,7 +642,9 @@
            (wp:comment_date_gmt () ,(string-replace date-string "T" " "))
            (wp:comment_content
             ()
-            ,(cdata-text (if (< (string-length body) 3) "..." body)))
+            ,(cdata-text (string-append (default-text subject)
+                                        "\n"
+                                        (default-text body))))
            (wp:comment_approved () ,default-approval)
            (wp:comment_parent
             ()
@@ -641,16 +698,10 @@
              tag-list)
        (let ([time (car (string-split log-time))]
              [title (make-title-string subject)])
-         (cond [site (string-append
-                      "http://" site "/blog/"
-                      (string-replace time "-" "/")
-                      "/"
-                      title
-                      "/")]
-               [else (string-append
-                      time
-                      "-"
-                      title)]))])))
+         (cond [site (string-append site "blog/"
+                                    (string-replace time "-" "/")
+                                    "/" title "/")]
+               [else (string-append time "-" title)]))])))
 
 (define (build-frog-markdown-path file)
   (build-path (string-append (build-location file) markdown-suffix)))
