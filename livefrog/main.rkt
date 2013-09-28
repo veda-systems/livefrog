@@ -487,7 +487,6 @@
          (dl "    Tags: " tag-list)
          (newline)
 
-         ;; (dln "<em>Original article: <a href=\"" url "\">" url "</a></em>")
          (dln "<em>Original article: " (ahref url url) "</em>")
 
          (dln body)
