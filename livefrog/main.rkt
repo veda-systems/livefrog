@@ -68,6 +68,7 @@
 (define current-disqus-file (make-parameter #f))
 (define current-site (make-parameter #f))
 (define auto-mode (make-parameter #f))
+(define backlinks (make-parameter #f))
 
 
 ;;;-------------------------------------------------------------------
@@ -455,8 +456,7 @@
 
 ;;; Entry file to Frog Markdown data
 (define (entry-file->frog-markdown-data file)
-  (let ([item (entry-file-contents file)]
-        [comment-count (entry-file-comment-count file)])
+  (let ([item (entry-file-contents file)])
     (match item
       [(list item-id
              event-time
@@ -490,25 +490,6 @@
          (dln "<em>Original article: " (ahref url url) "</em>")
 
          (dln body)
-
-         ;; NOTE: Everything that follows this comment, won't be present
-         ;; in future posts.
-
-         ;; NOTE: This won't be present in future posts, because this is
-         ;; static content. If a user comments on a migrated post, the HTML
-         ;; generated from this section will become obsolete. Therefore, to
-         ;; automatically update the number of comments present in a post,
-         ;; we must extract the number of comments by communicating with
-         ;; Disqus. AFAIK, as of 2013-09-26, Disqus doesn't have that. This
-         ;; can be viewed as a glaring hole of the decoupling of the entries,
-         ;; and the comments.
-         #|
-         (let ([count (number->string comment-count)]
-               [location (build-location file "/")])
-           (if (= comment-count 1)
-               (dln (ahref location (string-append count " comment")))
-               (dln (ahref location (string-append count " comments")))))
-         |#
 
          ;; NOTE: This serves as a reminder that this text should be placed
          ;; somewhere in the beginning of the body, but how exactly are we
@@ -859,6 +840,11 @@
     (""
      "Pick up ljdump files automatically.")
     (auto-mode #t)]
+
+   [("--backlinks")
+    (""
+     "Print original post source.")
+    (backlinks #t)]
 
    #:once-any
    [("-v" "--verbose")
