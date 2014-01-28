@@ -852,19 +852,19 @@
     (current-disqus-file disqus-file)
     (current-render-type 'disqus-comment)]
 
-   [("--generic-scribble" "--plain-scribble")
+   [("--generic-scribble")
     (""
      "Render to generic Scribble output.")
     (current-render-type 'generic-scribble)]
 
    [("--auto")
     (""
-     "Pick up ljdump files automatically.")
+     "Perform an automatic scan and render.")
     (auto-mode #t)]
 
    [("--backref")
     (""
-     "Print URLs to original article source.")
+     "Print URLs of original LJ entries, to output files.")
     (backref #t)]
 
    #:once-any
