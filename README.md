@@ -1,22 +1,23 @@
 # Introduction
 
-__Livefrog__ is a [Racket](http://racket-lang.org) program, used to
-convert the XML files created by
-[ljdump](https://github.com/ghewgill/ljdump), for
-[Frog](https://github.com/greghendershott/frog/) usage. It is a tool
-used to migrate from LiveJournal to a Frog-powered blogging platform.
+__livefrog__ is a utility written in [Racket](http://racket-lang.org),
+used to migrate LiveJournal posts and comments to the
+[Frog](https://github.com/greghendershott/frog/) blogging platform. It
+uses the files dumped by either [ljdump](http://hewgill.com/ljdump/)
+or [ljmigrate](http://github.com/ceejbot/ljmigrate) to create
+the corresponding source files for Frog.
 
 
 # Installation
 
-__Livefrog__ is available via Racket's
+__livefrog__ is available via Racket's
 [Planet2](http://pkg.racket-lang.org).
 
 ```
 raco pkg install livefrog
 ```
 
-If that doesn't work, install the dependencies, and __Livefrog__
+If that doesn't work, install the dependencies, and __livefrog__
 itself, from the local disk.
 
 ```
@@ -35,34 +36,95 @@ the sources from the internet.
 This sections contains instructions for creating files suitable for
 use with Frog.
 
-To create a Markdown file from the file L-10:
+## Basics
+
+To create a Markdown file from the file entry.xml
 
 ```
-raco livefrog --markdown L-10
+raco livefrog --markdown entry.xml
 ```
 
-To automatically "pick up" the files created by ljdump (the ones that
-prefixed with L-):
+That, however, becomes cumbersome if you're going to manage more than
+a hundred entries. To automatically "pick up" the files created by
+ljdump or ljmigrate, and convert them to Markdown:
 
 ```
 raco livefrog --auto --markdown
 ```
 
+Bear in mind, though, that ljdump and ljmigrate differs how the trees
+for the data are created. ljdump has the following tree format, where
+USERNAME is your LiveJournal account name:
+
+```
+ljdump/
+  build
+  ChangeLog
+  convertdump.py
+  USERNAME/
+    L-1
+    L-2
+    C-2
+    L-3
+    ...
+  ljdump.config
+  ljdump.config.sample
+  ljdump-gui.py
+  ljdump.py*
+  README.txt
+  TODO
+```
+
+ljmigrate, on the other hand, uses a different format:
+
+```
+ljmigrate/
+  LICENSE.text
+  ljmigrate.cfg
+  ljmigrate.cfg.sample
+  ljmigrate.py*
+  README.md
+  README_windows.txt
+  TODO
+  www.livejournal.com/
+    USERNAME/
+      entry00001/
+        entry.xml
+      entry00002/
+        entry.xml
+        comment.xml
+      html/
+      metadata/
+      userpics/
+```
+
+After creating the Markdown Frog source files, you may now copy them
+to your Frog source directory, designated at `_src/posts/`
+
+## Comments
+
+Frog, by default, uses [Disqus](http://disqus.com) to handle the
+comments. To import comments to this platform, we need to generate an
+XML file that must adhere to Disqus' comment import rules.
+
 To create a file, named `comments.xml` that will be used for importing
-comments, at [http://import.disqus.com/](http://import.disqus.com/),
-using `foo.bar.com` as the root site:
+comments, to be used with
+[http://import.disqus.com/](http://import.disqus.com/), using
+`foo.bar.com` as the root site:
 
 ```
 raco livefrog --site foo.bar.com --disqus comments.xml
 ```
 
-To create a "generic" Scribble (one that is free-form):
+## Miscellany
+
+To create a generic, and free-form Scribble file:
 
 ```
-raco livefrog --generic-scribble L-10
+raco livefrog --generic-scribble entry.xml
 ```
 
-To display the list of available command line options and switches.
+To display the list of available command-line options and switches:
 
 ```
 raco livefrog --help
@@ -71,7 +133,7 @@ raco livefrog --help
 
 # Updating
 
-If you installed __Livefrog__ using the first method described in the
+If you installed __livefrog__ using the first method described in the
 section *Introduction*, you can update it by running:
 
 ```
@@ -79,7 +141,7 @@ raco pkg update livefrog
 ```
 
 However, if you used the latter method, you may update it by pulling
-the updates, uninstalling __Livefrog__, then installing it
+the updates, uninstalling __livefrog__, then installing it
 again:
 
 ```

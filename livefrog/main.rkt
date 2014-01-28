@@ -12,16 +12,17 @@
  racket/cmdline
  racket/match
  racket/file
+ racket/format
  xml
  sxml
  "utils.rkt"
  "symbols.rkt"
  scribble/render
- (prefix-in text:     scribble/text-render)
- (prefix-in markdown: scribble/markdown-render)
- (prefix-in html:     scribble/html-render)
- (prefix-in latex:    scribble/latex-render)
- (prefix-in pdf:      scribble/pdf-render)
+ (prefix-in text:   scribble/text-render)
+ (prefix-in mdown:  scribble/markdown-render)
+ (prefix-in html:   scribble/html-render)
+ (prefix-in latex:  scribble/latex-render)
+ (prefix-in pdf:    scribble/pdf-render)
  frog/util)
 
 
@@ -68,7 +69,7 @@
 (define current-disqus-file (make-parameter #f))
 (define current-site (make-parameter #f))
 (define auto-mode (make-parameter #f))
-(define backlinks (make-parameter #f))
+(define backref (make-parameter #f))
 
 
 ;;;-------------------------------------------------------------------
@@ -195,17 +196,30 @@
 (define (iso-8601-date date)
   (string-replace date " " "T"))
 
-(define (ljdump-entry-files path)
-  (filter (λ (file)
-            (string=?
-             (substring (path->string file) 0 1) "L"))
-          (ls path)))
+(define (format-ljdump-path index text)
+  (format "~A-~A" text index))
 
-(define (ljdump-comment-files path)
-  (filter (λ (file)
-            (string=?
-             (substring (path->string file) 0 1) "C"))
-          (ls path)))
+(define (format-ljmigrate-path index text)
+  (format "entry~A/~A.xml"
+          (~a index #:pad-string "0" #:min-width 5 #:align 'right)
+          text))
+
+(define (collect-entry-files entry-proc directory)
+  (filter nempty?
+          (for/list ([index (in-naturals)]
+                     [file (directory-list directory)])
+            (let* ([idx (number->string index)]
+                   [entry-file (entry-proc idx)])
+              (if (file-exists? entry-file)
+                  entry-file
+                  '())))))
+
+(define (entry-files (directory (current-directory)))
+  (append
+   (collect-entry-files (λ (idx) (format-ljdump-path idx 'L))
+                        directory)
+   (collect-entry-files (λ (idx) (format-ljmigrate-path idx 'entry))
+                        directory)))
 
 (define excluded-title-chars
   '(#\/ #\" #\? #\! #\' #\, #\. #\@ #\% #\= #\- #\+ #\^ #\& #\*
@@ -487,7 +501,8 @@
          (dl "    Tags: " tag-list)
          (newline)
 
-         (dln "<em>Original article: " (ahref url url) "</em>")
+         (when (backref)
+           (dln "<em>Original article: " (ahref url url) "</em>"))
 
          (dln body)
 
@@ -535,18 +550,25 @@
 (define (cdata-text text)
   (string-append "<![CDATA[" text "]]>"))
 
-(define (build-entry-comment-pairs (directory "."))
-  (filter (λ (x)
-            (not (empty? x)))
+(define (collect-entry-comment-pairs entry-proc comment-proc directory)
+  (filter nempty?
           (for/list ([index (in-naturals)]
                      [file (directory-list directory)])
-            (let* ([num (number->string index)]
-                   [l-num (string-append "L-" num)]
-                   [c-num (string-append "C-" num)])
-              (if (and (file-exists? l-num)
-                       (file-exists? c-num))
-                  (list l-num c-num)
+            (let* ([idx (number->string index)]
+                   [entry-file (entry-proc idx)]
+                   [comment-file (comment-proc idx)])
+              (if (and (file-exists? entry-file)
+                       (file-exists? comment-file))
+                  (list entry-file comment-file)
                   '())))))
+
+(define (entry-comment-pairs (directory (current-directory)))
+  (append (collect-entry-comment-pairs (λ (idx) (format-ljdump-path idx 'L))
+                                         (λ (idx) (format-ljdump-path idx 'C))
+                                         directory)
+          (collect-entry-comment-pairs (λ (idx) (format-ljmigrate-path idx 'entry))
+                                         (λ (idx) (format-ljmigrate-path idx 'comments))
+                                         directory)))
 
 (define (build-disqus-comment-head path-pairs)
   (for/list ([path-pair path-pairs])
@@ -632,7 +654,7 @@
                  parent-id)))]))))
 
 (define (build-disqus-comment-data (directory (current-directory)))
-  (let ([path-pairs (build-entry-comment-pairs directory)])
+  (let ([path-pairs (entry-comment-pairs directory)])
     (display "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     (print-xml
      `(rss ((version "2.0")
@@ -748,7 +770,7 @@
     [(markdown md)
      (prn1 "Rendering ~a as Markdown." file)
      (render parts (build-listof-dests files ".md")
-             #:render-mixin markdown:render-mixin)]
+             #:render-mixin mdown:render-mixin)]
     [(text txt)
      (prn1 "Rendering ~a as Plaintext." file)
      (render parts (build-listof-dests files ".txt")
@@ -774,8 +796,7 @@
 (define (main files)
   (let ([render-type (current-render-type)]
         [input-files (if (auto-mode)
-                         (append (ljdump-entry-files (current-directory))
-                                 files)
+                         (append (entry-files) files)
                          files)])
     (case render-type
       [(disqus-comment)
@@ -836,15 +857,15 @@
      "Render to generic Scribble output.")
     (current-render-type 'generic-scribble)]
 
-   [("--auto" "--auto-mode")
+   [("--auto")
     (""
      "Pick up ljdump files automatically.")
     (auto-mode #t)]
 
-   [("--backlinks")
+   [("--backref")
     (""
-     "Print original post source.")
-    (backlinks #t)]
+     "Print URLs to original article source.")
+    (backref #t)]
 
    #:once-any
    [("-v" "--verbose")

@@ -98,7 +98,10 @@
         (listof procedure?))]
   [symbols->strings
    (->* ((listof symbol?)) ()
-        (listof string?))]))
+        (listof string?))]
+  [nempty?
+   (->* (any/c) ()
+        boolean?)]))
 
 (define (map-append proc lst)
   (map proc (apply append lst)))
@@ -236,3 +239,6 @@
 
 (define (string0 str)
   (substring str 0 1))
+
+(define (nempty? x)
+  (not (empty? x)))
