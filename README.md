@@ -4,8 +4,8 @@ __livefrog__ is a utility written in [Racket](http://racket-lang.org),
 used to migrate LiveJournal posts and comments to the
 [Frog](https://github.com/greghendershott/frog/) blogging platform. It
 uses the files dumped by either [ljdump](http://hewgill.com/ljdump/)
-or [ljmigrate](http://github.com/ceejbot/ljmigrate) to create
-the corresponding source files for Frog.
+or [ljmigrate](http://github.com/ceejbot/ljmigrate) to create the
+corresponding source files for Frog.
 
 
 # Installation
@@ -46,15 +46,19 @@ raco livefrog --markdown entry.xml
 
 That, however, becomes cumbersome if you're going to manage more than
 a hundred entries. To automatically "pick up" the files created by
-ljdump or ljmigrate, and convert them to Markdown:
+[ljdump](http://hewgill.com/ljdump) or
+[ljmigrate](http://github.com/ceejbot/ljmigrate), and convert them to
+Markdown:
 
 ```
 raco livefrog --auto --markdown
 ```
 
-Bear in mind, though, that ljdump and ljmigrate differs how the trees
-for the data are created. ljdump has the following tree format, where
-USERNAME is your LiveJournal account name:
+Bear in mind, though, that [ljdump](http://hewgill.com/ljdump) and
+[ljmigrate](http://github.com/ceejbot/ljmigrate) differs how the trees
+for the data are created. [ljdump](http://hewgill.com/ljdump) has the
+following tree format, where USERNAME is your LiveJournal account
+name:
 
 ```
 ljdump/
@@ -75,7 +79,8 @@ ljdump/
   TODO
 ```
 
-ljmigrate, on the other hand, uses a different format:
+[ljmigrate](http://github.com/ceejbot/ljmigrate), on the other hand,
+uses a different format:
 
 ```
 ljmigrate/
