@@ -42,7 +42,7 @@ use with Frog.
 To create a Markdown file from the file entry.xml
 
 ```
-raco livefrog --markdown entry.xml
+raco livefrog -m entry.xml
 ```
 
 That, however, becomes cumbersome if you're going to manage more than
@@ -52,7 +52,7 @@ a hundred entries. To automatically "pick up" the files created by
 Markdown:
 
 ```
-raco livefrog --auto --markdown
+raco livefrog -am
 ```
 
 Bear in mind, though, that [ljdump](http://hewgill.com/ljdump) and
@@ -119,21 +119,7 @@ comments, to be used with
 `foo.bar.com` as the root site:
 
 ```
-raco livefrog --site foo.bar.com --disqus comments.xml
-```
-
-## Miscellany
-
-To create a generic, and free-form Scribble file:
-
-```
-raco livefrog --generic-scribble entry.xml
-```
-
-To display the list of available command-line options and switches:
-
-```
-raco livefrog --help
+raco livefrog -s foo.bar.com -c comments.xml
 ```
 
 

@@ -845,7 +845,7 @@
     (""
      "Specify the root site to use.")
     (current-site site)]
-   [("-d" "--disqus")
+   [("-c" "--comments")
     disqus-file
     (""
      "Specify the output Disqus XML import file.")
