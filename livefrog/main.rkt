@@ -831,7 +831,7 @@
 (module+ main
   (command-line
    #:once-each
-   [("--markdown" "--frog-markdown" "--md")
+   [("--md" "--markdown" "--frog-markdown")
     (""
      "Render to Frog Markdown output.")
     (current-render-type 'frog-markdown)]
