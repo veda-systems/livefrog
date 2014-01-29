@@ -831,7 +831,7 @@
 (module+ main
   (command-line
    #:once-each
-   [("--md" "--markdown" "--frog-markdown")
+   [("-m" "--markdown")
     (""
      "Render to Frog Markdown output.")
     (current-render-type 'frog-markdown)]
@@ -840,12 +840,12 @@
    ;;   "Render to Frog Scribble output.")
    ;;  (current-render-type 'frog-scribble)]
 
-   [("--site" "--root" "--root-site")
+   [("-s" "--site")
     site
     (""
      "Specify the root site to use.")
     (current-site site)]
-   [("--disqus" "--disqus-file")
+   [("-d" "--disqus")
     disqus-file
     (""
      "Specify the output Disqus XML import file.")
@@ -857,12 +857,12 @@
    ;;   "Render to generic Scribble output.")
    ;;  (current-render-type 'generic-scribble)]
 
-   [("--auto")
+   [("-a" "--auto")
     (""
      "Perform an automatic scan and render.")
     (auto-mode #t)]
 
-   [("--backref")
+   [("-b" "--backref")
     (""
      "Print URLs of original LJ entries, to output files.")
     (backref #t)]
