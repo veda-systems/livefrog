@@ -831,14 +831,14 @@
 (module+ main
   (command-line
    #:once-each
-   [("--markdown" "--frog-markdown")
+   [("--markdown" "--frog-markdown" "--md")
     (""
      "Render to Frog Markdown output.")
     (current-render-type 'frog-markdown)]
-   [("--scribble" "--frog-scribble")
-    (""
-     "Render to Frog Scribble output.")
-    (current-render-type 'frog-scribble)]
+   ;; [("--scribble" "--frog-scribble")
+   ;;  (""
+   ;;   "Render to Frog Scribble output.")
+   ;;  (current-render-type 'frog-scribble)]
 
    [("--site" "--root" "--root-site")
     site
@@ -852,10 +852,10 @@
     (current-disqus-file disqus-file)
     (current-render-type 'disqus-comment)]
 
-   [("--generic-scribble")
-    (""
-     "Render to generic Scribble output.")
-    (current-render-type 'generic-scribble)]
+   ;; [("--generic-scribble")
+   ;;  (""
+   ;;   "Render to generic Scribble output.")
+   ;;  (current-render-type 'generic-scribble)]
 
    [("--auto")
     (""
