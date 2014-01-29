@@ -21,9 +21,10 @@ If that doesn't work, install the dependencies, and __livefrog__
 itself, from the local disk.
 
 ```
-git clone http://github.com/jbclements/sxml.git
-git clone http://github.com/ebzzry/livefrog.git
-raco pkg install sxml/ livefrog/
+git clone https://github.com/jbclements/sxml.git
+git clone https://github.com/greghendershott/frog.git
+git clone https://github.com/ebzzry/livefrog.git
+raco pkg install frog/ sxml/ livefrog/
 ```
 
 The trailing slashes are important, to tell `raco` that you are
