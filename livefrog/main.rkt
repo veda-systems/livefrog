@@ -75,8 +75,9 @@
 ;;;-------------------------------------------------------------------
 ;;; Global definitions
 
-(define scribble-suffix ".scrbl")
 (define markdown-suffix ".md")
+(define html-suffix ".html")
+(define scribble-suffix ".scrbl")
 (define xml-suffix ".xml")
 
 (define scribble-base-header "#lang scribble/base")
@@ -173,8 +174,9 @@
       #t
       #f))
 
-(define (suffix->scrbl path) (path-replace-suffix path scribble-suffix))
 (define (suffix->md path) (path-replace-suffix path markdown-suffix))
+(define (suffix->html path) (path-replace-suffix path html-suffix))
+(define (suffix->scrbl path) (path-replace-suffix path scribble-suffix))
 (define (suffix->xml path) (path-replace-suffix path xml-suffix))
 
 ;;; (tag-value '((user () "karim_sabi")))
@@ -513,6 +515,10 @@
 
 (define/out->file entry-file->frog-markdown)
 
+(define entry-file->frog-html-data entry-file->frog-markdown-data)
+
+(define/out->file entry-file->frog-html)
+
 ;;; TODO: Entry file to Frog Scribble data
 (define (entry-file->frog-scribble-data file) #t)
 (define/out->file entry-file->frog-scribble)
@@ -707,6 +713,9 @@
 (define (build-frog-markdown-path file)
   (build-path (string-append (build-location file) markdown-suffix)))
 
+(define (build-frog-html-path file)
+  (build-path (string-append (build-location file) html-suffix)))
+
 (define (build-frog-scribble-path file)
   (build-path (string-append (build-location file) scribble-suffix)))
 
@@ -720,6 +729,14 @@
         [outfile-path (ensure-object-path outfile)])
     (cond [(entry-file? infile-path)
            (entry-file->frog-markdown-file infile-path outfile-path)]
+          [else #f])))
+
+;; Frog HTML
+(define (xml-file->frog-html-file infile outfile)
+  (let ([infile-path (ensure-object-path infile)]
+        [outfile-path (ensure-object-path outfile)])
+    (cond [(entry-file? infile-path)
+           (entry-file->frog-html-file infile-path outfile-path)]
           [else #f])))
 
 ;;; TODO: Frog Scribble
@@ -809,6 +826,9 @@
              [(frog-markdown)
               (xml-file->frog-markdown-file file (build-frog-markdown-path file))]
 
+             [(frog-html)
+              (xml-file->frog-html-file file (build-frog-html-path file))]
+
              [(frog-scribble)
               (xml-file->frog-scribble-file file (build-frog-scribble-path file))]
 
@@ -835,6 +855,12 @@
     (""
      "Render to Frog Markdown output.")
     (current-render-type 'frog-markdown)]
+
+   [("-t" "--html")
+    (""
+     "Render to Frog HTML output.")
+    (current-render-type 'frog-html)]
+
    ;; [("--scribble" "--frog-scribble")
    ;;  (""
    ;;   "Render to Frog Scribble output.")
