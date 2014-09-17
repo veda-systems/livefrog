@@ -1,3 +1,4 @@
 #lang setup/infotab
 (define version "1.0")
-(define deps '("sxml" "frog"))
+(define collection 'multi)
+(define deps '("sxml" "frog" "find-parent-dir"))
