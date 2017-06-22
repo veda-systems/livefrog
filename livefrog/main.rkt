@@ -23,7 +23,8 @@
  (prefix-in html:   scribble/html-render)
  (prefix-in latex:  scribble/latex-render)
  (prefix-in pdf:    scribble/pdf-render)
- frog/util)
+ frog/paths
+ (except-in frog/private/util split-common-prefix))
 
 
 ;;;-------------------------------------------------------------------
@@ -245,7 +246,7 @@
 (define (make-title-string str)
   (if (= (string-length str) 0)
       "title"
-      (let* ([s (string-downcase (our-encode str))]
+      (let* ([s (string-downcase (slug str))]
              [end (string-ref s (- (string-length s) 1))])
         (if (char=? end #\-)
             (substring s 0 (- (string-length s) 2))
